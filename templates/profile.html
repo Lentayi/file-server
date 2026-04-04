@@ -303,6 +303,8 @@
             height: 16px;
         }
 
+        .card.focused,
+        .folder-row.focused,
         .user-card.focused {
             border-color: rgba(47, 125, 246, 0.45);
             box-shadow: 0 16px 34px rgba(47, 125, 246, 0.16);
@@ -398,7 +400,7 @@
         {% endwith %}
 
         <section class="grid">
-            <article class="card">
+            <article class="card" id="profile-summary">
                 <div class="card-inner profile-head">
                     <div class="avatar">
                         {% if avatar_url %}
@@ -418,7 +420,7 @@
             </article>
 
             <div class="stack">
-                <article class="card">
+                <article class="card" id="avatar-settings">
                     <div class="card-inner">
                         <div class="eyebrow">Аватар</div>
                         <h2>Изменение аватара</h2>
@@ -430,7 +432,7 @@
                     </div>
                 </article>
 
-                <article class="card">
+                <article class="card" id="password-settings">
                     <div class="card-inner">
                         <div class="eyebrow">Безопасность</div>
                         <h2>Смена пароля</h2>
@@ -443,7 +445,7 @@
                     </div>
                 </article>
 
-                <article class="card">
+                <article class="card" id="theme-settings">
                     <div class="card-inner">
                         <div class="eyebrow">Оформление</div>
                         <h2>Тема интерфейса</h2>
@@ -460,7 +462,7 @@
                                 </label>
                                 <label class="theme-option">
                                     <input type="radio" name="theme_preference" value="auto" {% if theme_preference == 'auto' %}checked{% endif %}>
-                                    <span>Авто: утром и днем светлая, вечером и ночью темная</span>
+                                    <span>Автоматически</span>
                                 </label>
                             </div>
                             <button class="submit-button primary" type="submit">Сохранить тему</button>
@@ -469,7 +471,7 @@
                 </article>
             </div>
 
-            <article class="card">
+            <article class="card" id="access-overview">
                 <div class="card-inner">
                     <div class="eyebrow">Доступы</div>
                     <h2>Ваши права и папки</h2>
@@ -493,7 +495,7 @@
         {% if can_create_shared_folders or can_edit_shared_folders or current_user.is_admin %}
             <section class="wide-grid admin-section">
                 {% if can_create_shared_folders %}
-                    <article class="card">
+                    <article class="card" id="shared-folder-create">
                         <div class="card-inner">
                             <div class="eyebrow">Общие папки</div>
                             <h2>Создание новой общей папки</h2>
@@ -512,7 +514,7 @@
                             <h2>Изменение существующих папок</h2>
                             <div class="folder-grid">
                                 {% for folder in all_shared_folders %}
-                                    <div class="folder-row">
+                                    <div class="folder-row" id="shared-folder-{{ folder.id }}">
                                         <div class="mini-title">{{ folder.name }}</div>
                                         <form method="POST" action="{{ url_for('rename_shared_folder_route', folder_id=folder.id) }}">
                                             <input type="text" name="name" value="{{ folder.name }}" required>
@@ -529,7 +531,7 @@
 
         {% if current_user.is_admin %}
             <section class="wide-grid admin-section">
-                <article class="card">
+                <article class="card" id="admin-files">
                     <div class="card-inner">
                         <div class="eyebrow">Администрирование</div>
                         <h2>Полный просмотр файлов</h2>
@@ -540,7 +542,7 @@
                     </div>
                 </article>
 
-                <article class="card">
+                <article class="card" id="admin-create-user">
                     <div class="card-inner">
                         <div class="eyebrow">Администрирование</div>
                         <h2>Создание нового пользователя</h2>
@@ -605,20 +607,29 @@
     </div>
 
     <script>
-        const focusUserId = new URLSearchParams(window.location.search).get("focus_user");
-        if (focusUserId) {
-            const targetCard = document.getElementById(`user-${focusUserId}`);
+        const url = new URL(window.location.href);
+        const returnTarget = url.searchParams.get("return_to");
+        const focusUserId = url.searchParams.get("focus_user");
+        const targetId = returnTarget || (focusUserId ? `user-${focusUserId}` : "");
+        const navigationEntry = performance.getEntriesByType("navigation")[0];
+
+        if (!targetId && navigationEntry && navigationEntry.type === "reload") {
+            window.scrollTo(0, 0);
+        }
+
+        if (targetId) {
+            const targetCard = document.getElementById(targetId);
             if (targetCard) {
                 requestAnimationFrame(() => {
                     targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
                     targetCard.classList.add("focused");
                     setTimeout(() => targetCard.classList.remove("focused"), 2200);
                 });
-
-                const cleanUrl = new URL(window.location.href);
-                cleanUrl.searchParams.delete("focus_user");
-                window.history.replaceState({}, "", cleanUrl);
             }
+
+            url.searchParams.delete("return_to");
+            url.searchParams.delete("focus_user");
+            window.history.replaceState({}, "", url);
         }
     </script>
 </body>

@@ -641,6 +641,14 @@ def redirect_to_admin_files(current_relative_path=""):
     return redirect(url_for("admin_file_browser"))
 
 
+def redirect_to_profile(return_to=""):
+    params = {}
+    target = (return_to or "").strip()
+    if target:
+        params["return_to"] = target
+    return redirect(url_for("profile", **params))
+
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     ensure_runtime_schema()
@@ -724,6 +732,7 @@ def shared_explorer(folder_id):
         clipboard=clipboard,
         clipboard_count=len(clipboard["items"]) if clipboard else 0,
         clipboard_mode=clipboard["mode"] if clipboard else "",
+        active_theme=resolve_active_theme(current_user),
     )
 
 
@@ -892,18 +901,18 @@ def update_password():
 
     if not check_password_hash(current_user.password, current_password):
         flash("Текущий пароль введен неверно.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("password-settings")
     if len(new_password) < 4:
         flash("Новый пароль должен содержать минимум 4 символа.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("password-settings")
     if new_password != confirm_password:
         flash("Подтверждение пароля не совпадает.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("password-settings")
 
     current_user.password = generate_password_hash(new_password)
     db.session.commit()
     flash("Пароль обновлен.", "success")
-    return redirect(url_for("profile"))
+    return redirect_to_profile("password-settings")
 
 
 @app.route('/profile/avatar', methods=['POST'])
@@ -912,14 +921,14 @@ def update_avatar():
     uploaded_file = request.files.get("avatar")
     if not uploaded_file or not uploaded_file.filename:
         flash("Сначала выберите изображение.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("avatar-settings")
 
     if not save_avatar(current_user, uploaded_file):
         flash("Разрешены только PNG, JPG, JPEG, GIF или WEBP.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("avatar-settings")
 
     flash("Аватар обновлен.", "success")
-    return redirect(url_for("profile"))
+    return redirect_to_profile("avatar-settings")
 
 
 @app.route('/dashboard/theme', methods=['POST'])
@@ -944,7 +953,7 @@ def update_theme():
     )
     db.session.commit()
     flash("Настройки темы обновлены.", "success")
-    return redirect(url_for("profile"))
+    return redirect_to_profile("theme-settings")
 
 
 @app.route('/shared-folders/create', methods=['POST'])
@@ -955,9 +964,10 @@ def create_shared_folder_route():
 
     if not folder:
         flash("Укажите корректное имя общей папки.", "error")
+        return redirect_to_profile("shared-folder-create")
     else:
         flash(f"Общая папка «{folder.name}» создана.", "success")
-    return redirect(url_for("profile"))
+        return redirect_to_profile(f"shared-folder-{folder.id}")
 
 
 @app.route('/shared-folders/<int:folder_id>/rename', methods=['POST'])
@@ -969,12 +979,12 @@ def rename_shared_folder_route(folder_id):
 
     if not new_name:
         flash("Укажите корректное новое имя папки.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile(f"shared-folder-{folder.id}")
 
     folder.name = new_name
     db.session.commit()
     flash("Название общей папки обновлено.", "success")
-    return redirect(url_for("profile"))
+    return redirect_to_profile(f"shared-folder-{folder.id}")
 
 
 @app.route('/admin/users/create', methods=['POST'])
@@ -988,20 +998,20 @@ def admin_create_user():
 
     if not username:
         flash("Укажите корректный логин нового пользователя.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("admin-create-user")
     if len(password) < 4:
         flash("Пароль нового пользователя должен содержать минимум 4 символа.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("admin-create-user")
     if User.query.filter_by(username=username).first():
         flash("Пользователь с таким логином уже существует.", "error")
-        return redirect(url_for("profile"))
+        return redirect_to_profile("admin-create-user")
 
     user = User(username=username, password=generate_password_hash(password), is_admin=is_admin)
     db.session.add(user)
     db.session.commit()
     ensure_user_permission_record(user)
     flash(f"Пользователь «{username}» создан.", "success")
-    return redirect(url_for("profile", focus_user=user.id))
+    return redirect_to_profile(f"user-{user.id}")
 
 
 @app.route('/admin/users/<int:user_id>/update', methods=['POST'])
@@ -1014,7 +1024,7 @@ def admin_update_user(user_id):
 
     if user.id == current_user.id and not new_is_admin and User.query.filter_by(is_admin=True).count() <= 1:
         flash("Нельзя снять права у последнего администратора.", "error")
-        return redirect(url_for("profile", focus_user=user.id))
+        return redirect_to_profile(f"user-{user.id}")
 
     user.is_admin = new_is_admin
     permission.can_create_shared_folders = request.form.get("can_create_shared_folders") == "on"
@@ -1030,7 +1040,7 @@ def admin_update_user(user_id):
     db.session.add(permission)
     db.session.commit()
     flash(f"Права пользователя «{user.username}» обновлены.", "success")
-    return redirect(url_for("profile", focus_user=user.id))
+    return redirect_to_profile(f"user-{user.id}")
 
 
 @app.route('/avatar/<int:user_id>')
@@ -1077,6 +1087,7 @@ def storage():
         clipboard=clipboard,
         clipboard_count=len(clipboard["items"]) if clipboard else 0,
         clipboard_mode=clipboard["mode"] if clipboard else "",
+        active_theme=resolve_active_theme(current_user),
     )
 
 
@@ -1224,6 +1235,7 @@ def admin_file_browser():
         breadcrumbs=build_admin_breadcrumbs(current_relative_path),
         current_relative_path=current_relative_path,
         parent_relative_path=parent_relative_path,
+        active_theme=resolve_active_theme(current_user),
     )
 
 

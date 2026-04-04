@@ -19,6 +19,40 @@
             --danger: #d44f57;
             --success: #23825d;
             --shadow: 0 24px 60px rgba(35, 53, 79, 0.18);
+            --surface: #ffffff;
+            --surface-soft: #f8fbff;
+            --surface-hover: #eef4ff;
+            --surface-border: rgba(255, 255, 255, 0.9);
+            --topbar-bg: linear-gradient(180deg, #ffffff, #fbfdff);
+            --file-icon-bg: linear-gradient(180deg, #ffffff, #eef4ff);
+            --table-border: #eef2f8;
+        }
+
+        body[data-theme="dark"] {
+            --shell-bg: #081625;
+            --window-bg: #0d1b2b;
+            --sidebar-bg: #0b1827;
+            --toolbar-bg: #102336;
+            --line: rgba(173, 216, 255, 0.12);
+            --line-strong: rgba(173, 216, 255, 0.22);
+            --text: #eef6ff;
+            --muted: #94a8bf;
+            --blue: #78c7ff;
+            --blue-soft: rgba(120, 199, 255, 0.12);
+            --danger: #ff8d97;
+            --success: #68d7a6;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+            --surface: #102131;
+            --surface-soft: #12283d;
+            --surface-hover: rgba(120, 199, 255, 0.12);
+            --surface-border: rgba(173, 216, 255, 0.08);
+            --topbar-bg: linear-gradient(180deg, #102131, #0f2032);
+            --file-icon-bg: linear-gradient(180deg, #17304a, #10263a);
+            --table-border: rgba(173, 216, 255, 0.08);
+            background:
+                radial-gradient(circle at top left, rgba(81, 134, 255, 0.22), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(74, 186, 255, 0.18), transparent 20%),
+                linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
         }
 
         * {
@@ -45,7 +79,7 @@
             height: calc(100vh - 28px);
             display: grid;
             grid-template-columns: 278px minmax(0, 1fr);
-            border: 1px solid rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--surface-border);
             border-radius: 24px;
             background: var(--window-bg);
             box-shadow: var(--shadow);
@@ -80,7 +114,7 @@
             min-height: 38px;
             padding: 0 14px;
             border-radius: 12px;
-            background: #ffffff;
+            background: var(--surface);
             border: 1px solid var(--line);
             color: var(--text);
             text-decoration: none;
@@ -90,7 +124,7 @@
         .sidebar-panel {
             padding: 16px;
             border-radius: 18px;
-            background: #ffffff;
+            background: var(--surface);
             border: 1px solid var(--line);
         }
 
@@ -115,7 +149,7 @@
             padding: 12px 14px;
             border-radius: 14px;
             border: 1px dashed var(--line-strong);
-            background: #f8fbff;
+            background: var(--surface-soft);
             color: var(--text);
             cursor: pointer;
             text-align: center;
@@ -132,7 +166,7 @@
             padding: 0 16px;
             border: 1px solid var(--line);
             border-radius: 12px;
-            background: #ffffff;
+            background: var(--surface);
             color: var(--text);
             font-size: 0.95rem;
             font-weight: 600;
@@ -181,7 +215,7 @@
         }
 
         .section-link:hover {
-            background: #eef4ff;
+            background: var(--surface-hover);
         }
 
         .section-link.active {
@@ -216,7 +250,7 @@
             gap: 8px;
             padding: 10px 12px;
             border-radius: 12px;
-            background: #f7fbff;
+            background: var(--surface-soft);
             border: 1px solid var(--line);
             color: var(--muted);
             font-size: 0.92rem;
@@ -231,7 +265,7 @@
         .topbar {
             padding: 18px 22px 14px;
             border-bottom: 1px solid var(--line);
-            background: linear-gradient(180deg, #ffffff, #fbfdff);
+            background: var(--topbar-bg);
         }
 
         .title-row {
@@ -330,7 +364,7 @@
             padding: 12px 14px;
             border-radius: 14px;
             border: 1px solid var(--line);
-            background: #f8fbff;
+            background: var(--surface-soft);
         }
 
         .flash.success {
@@ -359,7 +393,7 @@
             border: 1px solid var(--line);
             border-radius: 18px;
             overflow: hidden;
-            background: #ffffff;
+            background: var(--surface);
         }
 
         .list-toolbar {
@@ -393,18 +427,18 @@
             font-size: 0.85rem;
             font-weight: 700;
             color: var(--muted);
-            background: #ffffff;
+            background: var(--surface);
             border-bottom: 1px solid var(--line);
         }
 
         tbody td {
             padding: 10px 16px;
-            border-bottom: 1px solid #eef2f8;
+            border-bottom: 1px solid var(--table-border);
             vertical-align: middle;
         }
 
         tbody tr:hover {
-            background: #f8fbff;
+            background: var(--surface-soft);
         }
 
         .name-cell {
@@ -439,7 +473,7 @@
 
         .entry-icon.file {
             border: 1px solid #cbd6e6;
-            background: linear-gradient(180deg, #ffffff, #eef4ff);
+            background: var(--file-icon-bg);
         }
 
         .entry-link {
@@ -526,7 +560,7 @@
         }
     </style>
 </head>
-<body>
+<body data-theme="{{ active_theme }}">
     <div class="app">
         <div class="window">
             <aside class="sidebar">
