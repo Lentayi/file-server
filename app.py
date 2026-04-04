@@ -3,19 +3,19 @@ from flask import Flask, request, redirect, render_template, send_file
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
-
 from models import db, User, File
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
 
 db.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 
 @login_manager.user_loader
 def load_user(user_id):
