@@ -1,93 +1,726 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Dashboard</title>
-</head>
-
-<body style="font-family: Arial;">
-
-<h2>{{ greeting }}, {{ username }}!</h2>
-
-<div style="display:flex; gap:40px;">
-
-    <!-- ЛЕВАЯ ЧАСТЬ -->
-    <div>
-        <h3>Общие папки</h3>
-        <ul>
-            <li>Папка 1</li>
-            <li>Папка 2</li>
-        </ul>
-    </div>
-
-    <!-- ЦЕНТР -->
-    <div>
-        <h3>Заполненность диска</h3>
-
-        <div style="width:300px; border:1px solid black;">
-           <div style="height:30px; background:green;" id="diskBar"></div>
-
-<script>
-    document.getElementById("diskBar").style.width = "{{ percent }}%";
-</script>
-        </div>
-
-        <p>{{ percent }}%</p>
-    </div>
-
-    <!-- ПРАВАЯ ЧАСТЬ -->
-    <div style="text-align:center;">
-        <div style="width:120px; height:120px; border-radius:50%; border:2px solid black;"></div>
-
-        <h3 onclick="window.location='/profile'" style="cursor:pointer;">
-            {{ username }}
-        </h3>
-
-        <button onclick="window.location='/storage'">
-            Открыть личное хранилище
-        </button>
-    </div>
-
-</div>
-
-<hr>
-
-<!-- ЗАГРУЗКА -->
-<h3>Загрузка файла</h3>
-
-<input type="file" id="fileInput">
-<button onclick="uploadFile()">Upload</button>
-
-<div style="width:300px; border:1px solid black;">
-  <div id="progressBar" style="height:20px; width:0%; background:green;"></div>
-</div>
-
-<p id="status"></p>
-
-<script>
-function uploadFile() {
-    let file = document.getElementById("fileInput").files[0];
-    let formData = new FormData();
-    formData.append("file", file);
-
-    let xhr = new XMLHttpRequest();
-
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            let percent = (e.loaded / e.total) * 100;
-            document.getElementById("progressBar").style.width = percent + "%";
-            document.getElementById("status").innerText = percent.toFixed(2) + "%";
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления</title>
+    <style>
+        :root {
+            --bg: #06131f;
+            --panel: rgba(8, 22, 36, 0.72);
+            --panel-strong: rgba(8, 22, 36, 0.88);
+            --line: rgba(183, 223, 255, 0.16);
+            --text: #f2f8ff;
+            --muted: #99adc2;
+            --accent: #67d5ff;
+            --accent-2: #8cffc5;
+            --accent-3: #ffd37a;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+            --radius-lg: 30px;
+            --radius-md: 22px;
+            --radius-sm: 16px;
         }
-    };
 
-    xhr.onload = function() {
-        document.getElementById("status").innerText = "Готово!";
-        location.reload();
-    };
+        * {
+            box-sizing: border-box;
+        }
 
-    xhr.open("POST", "/upload", true);
-    xhr.send(formData);
-}
-</script>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 12% 18%, rgba(103, 213, 255, 0.22), transparent 24%),
+                radial-gradient(circle at 84% 14%, rgba(140, 255, 197, 0.16), transparent 18%),
+                radial-gradient(circle at 75% 74%, rgba(255, 211, 122, 0.18), transparent 22%),
+                radial-gradient(circle at 32% 82%, rgba(116, 120, 255, 0.18), transparent 20%),
+                linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
+            position: relative;
+            overflow-x: hidden;
+        }
 
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: auto;
+            width: 34rem;
+            height: 34rem;
+            border-radius: 50%;
+            filter: blur(70px);
+            opacity: 0.32;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            top: -8rem;
+            right: -10rem;
+            background: linear-gradient(135deg, #49c8ff, #82ffd0);
+        }
+
+        body::after {
+            bottom: -10rem;
+            left: -8rem;
+            background: linear-gradient(135deg, #6c82ff, #ffe28b);
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 38px 28px 32px;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 26px;
+        }
+
+        .hero-copy h1 {
+            margin: 0;
+            font-size: clamp(2.4rem, 4vw, 4.5rem);
+            line-height: 0.98;
+            letter-spacing: -0.04em;
+        }
+
+        .hero-copy p {
+            max-width: 700px;
+            margin: 14px 0 0;
+            color: var(--muted);
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        .date-chip {
+            padding: 12px 18px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            color: #d8ebff;
+            white-space: nowrap;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(340px, 1.4fr) minmax(280px, 0.95fr) minmax(280px, 0.9fr);
+            gap: 22px;
+            align-items: stretch;
+        }
+
+        .stack {
+            display: grid;
+            gap: 22px;
+        }
+
+        .card {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%);
+            pointer-events: none;
+        }
+
+        .card-inner {
+            position: relative;
+            z-index: 1;
+            padding: 28px;
+        }
+
+        .card h2,
+        .card h3 {
+            margin: 0;
+            letter-spacing: -0.03em;
+        }
+
+        .eyebrow {
+            margin-bottom: 12px;
+            color: var(--accent);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+        }
+
+        .folders {
+            min-height: 100%;
+        }
+
+        .folders-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .folders-head p,
+        .disk-copy,
+        .profile-copy,
+        .upload-copy {
+            margin: 10px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .folder-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .folder-item {
+            display: grid;
+            grid-template-columns: 22px 1fr;
+            gap: 14px;
+            align-items: center;
+            padding: 16px 18px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+        }
+
+        .folder-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(103, 213, 255, 0.38);
+            background: rgba(103, 213, 255, 0.08);
+        }
+
+        .folder-checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 7px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+
+        .folder-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .folder-desc {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .mini-stat {
+            min-width: 116px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mini-stat strong {
+            display: block;
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        .mini-stat span {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .disk-card {
+            min-height: 100%;
+        }
+
+        .disk-visual {
+            display: grid;
+            place-items: center;
+            margin: 22px 0 24px;
+        }
+
+        .disk-ring {
+            --progress: {{ percent }};
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at center, rgba(6, 19, 31, 0.94) 0 54%, transparent 55%),
+                conic-gradient(from -90deg, #67d5ff 0 calc(var(--progress) * 1%), rgba(255, 255, 255, 0.1) 0 100%);
+            box-shadow:
+                inset 0 0 30px rgba(255, 255, 255, 0.06),
+                0 18px 40px rgba(0, 0, 0, 0.22);
+            position: relative;
+        }
+
+        .disk-ring::after {
+            content: "";
+            position: absolute;
+            inset: 18px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .disk-percent {
+            text-align: center;
+        }
+
+        .disk-percent strong {
+            display: block;
+            font-size: 3rem;
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+
+        .disk-percent span {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .disk-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .disk-stat {
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .disk-stat strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 1.15rem;
+        }
+
+        .disk-stat span {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .accent-line {
+            width: 52px;
+            height: 4px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            margin-top: 18px;
+        }
+
+        .profile-card {
+            background: var(--panel-strong);
+        }
+
+        .profile-head {
+            display: grid;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 3.1rem;
+            font-weight: 800;
+            letter-spacing: -0.06em;
+            color: #04111b;
+            background:
+                radial-gradient(circle at 30% 30%, #ffffff, #abf0ff 32%, #67d5ff 65%, #1b7ca8 100%);
+            box-shadow:
+                inset 0 6px 14px rgba(255, 255, 255, 0.35),
+                0 18px 40px rgba(0, 0, 0, 0.32);
+            border: 6px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-name {
+            margin-top: 18px;
+            font-size: 2rem;
+            letter-spacing: -0.04em;
+        }
+
+        .role-chip {
+            margin-top: 10px;
+            display: inline-flex;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(103, 213, 255, 0.12);
+            border: 1px solid rgba(103, 213, 255, 0.24);
+            color: #bdeeff;
+        }
+
+        .profile-copy {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .action-group {
+            display: grid;
+            gap: 12px;
+        }
+
+        .action {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 64px;
+            padding: 18px 20px;
+            border-radius: 24px;
+            border: 1px solid transparent;
+            color: var(--text);
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+
+        .action:hover {
+            transform: translateY(-2px);
+        }
+
+        .action.primary {
+            background: linear-gradient(135deg, #76ddff, #8fffc9);
+            color: #04111b;
+            box-shadow: 0 14px 30px rgba(103, 213, 255, 0.22);
+        }
+
+        .action.secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .upload-card {
+            margin-top: 22px;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .file-picker {
+            display: grid;
+            gap: 14px;
+        }
+
+        .file-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 58px;
+            padding: 14px 18px;
+            border-radius: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.24);
+            background: rgba(255, 255, 255, 0.04);
+            color: #d8ebff;
+            cursor: pointer;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            min-height: 58px;
+        }
+
+        .progress-shell {
+            margin-top: 16px;
+            width: 100%;
+            height: 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #67d5ff, #8cffc5);
+            transition: width 180ms ease;
+        }
+
+        .status {
+            margin-top: 10px;
+            color: var(--muted);
+            min-height: 24px;
+        }
+
+        .recent-files {
+            display: grid;
+            gap: 10px;
+        }
+
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+        }
+
+        .recent-item strong {
+            color: var(--text);
+            font-size: 0.96rem;
+        }
+
+        .empty-state {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            color: var(--muted);
+        }
+
+        @media (max-width: 1120px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page {
+                padding: 24px 16px 24px;
+            }
+
+            .hero {
+                flex-direction: column;
+            }
+
+            .card-inner {
+                padding: 22px;
+            }
+
+            .disk-ring {
+                width: 190px;
+                height: 190px;
+            }
+
+            .disk-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="hero">
+            <div class="hero-copy">
+                <h1>{{ greeting }}, {{ username }}!</h1>
+                <p>Стартовая панель для быстрого доступа к рабочим папкам, вашему личному хранилищу и состоянию диска. Я сохранил композицию из эскиза, но сделал ее чище, объемнее и приятнее визуально.</p>
+            </div>
+            <div class="date-chip">{{ today_label }}</div>
+        </section>
+
+        <section class="layout">
+            <article class="card folders">
+                <div class="card-inner">
+                    <div class="folders-head">
+                        <div>
+                            <div class="eyebrow">Навигация</div>
+                            <h2>Доступные вам общие папки</h2>
+                            <p>Быстрый обзор разделов, к которым у вас есть доступ.</p>
+                        </div>
+                        <div class="mini-stat">
+                            <strong>{{ shared_folders|length }}</strong>
+                            <span>разделов доступно</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-list">
+                        {% for folder in shared_folders %}
+                            <div class="folder-item">
+                                <div class="folder-checkbox"></div>
+                                <div>
+                                    <div class="folder-name">{{ folder.name }}</div>
+                                    <div class="folder-desc">{{ folder.description }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+
+            <div class="stack">
+                <article class="card disk-card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Хранилище</div>
+                        <h2>Заполнение диска</h2>
+                        <p class="disk-copy">Наглядный индикатор того, сколько места уже занято и сколько еще осталось.</p>
+
+                        <div class="disk-visual">
+                            <div class="disk-ring">
+                                <div class="disk-percent">
+                                    <strong>{{ percent }}%</strong>
+                                    <span>занято</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="disk-stats">
+                            <div class="disk-stat">
+                                <span>Использовано</span>
+                                <strong>{{ used_gb }} ГБ</strong>
+                            </div>
+                            <div class="disk-stat">
+                                <span>Свободно</span>
+                                <strong>{{ free_gb }} ГБ</strong>
+                            </div>
+                            <div class="disk-stat">
+                                <span>Всего</span>
+                                <strong>{{ total_gb }} ГБ</strong>
+                            </div>
+                        </div>
+
+                        <div class="accent-line"></div>
+                    </div>
+                </article>
+
+                <article class="card upload-card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Передача файлов</div>
+                        <h3>Загрузка в хранилище</h3>
+                        <p class="upload-copy">Выберите файл и отправьте его прямо с главной страницы. Прогресс обновляется в реальном времени.</p>
+
+                        <div class="upload-grid">
+                            <div class="file-picker">
+                                <label class="file-label" for="fileInput" id="fileLabel">Выбрать файл</label>
+                                <input class="file-input" type="file" id="fileInput">
+                                <button class="action primary upload-button" type="button" id="uploadButton" onclick="uploadFile()">Загрузить файл</button>
+
+                                <div class="progress-shell">
+                                    <div class="progress-bar" id="progressBar"></div>
+                                </div>
+                                <div class="status" id="status">Файл еще не выбран.</div>
+                            </div>
+
+                            <div>
+                                <div class="eyebrow">Личные файлы</div>
+                                {% if files %}
+                                    <div class="recent-files">
+                                        {% for file in files[:3] %}
+                                            <div class="recent-item">
+                                                <strong>{{ file.filename }}</strong>
+                                                <span>в хранилище</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="empty-state">Пока файлов нет. Первый загруженный документ сразу появится в личном хранилище.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <article class="card profile-card">
+                <div class="card-inner">
+                    <div class="profile-head">
+                        <div class="avatar">{{ avatar_text }}</div>
+                        <div class="profile-name">{{ username }}</div>
+                        <div class="role-chip">Администратор</div>
+                    </div>
+
+                    <p class="profile-copy">Личный блок с быстрым переходом в приватное хранилище. Кнопки оставил крупными и заметными, как у вас на схеме.</p>
+
+                    <div class="action-group">
+                        <a class="action primary" href="/storage">Открыть личное хранилище</a>
+                        <a class="action secondary" href="/profile">Открыть профиль</a>
+                        <a class="action secondary" href="/logout">Выйти</a>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById("fileInput");
+        const fileLabel = document.getElementById("fileLabel");
+        const uploadButton = document.getElementById("uploadButton");
+        const progressBar = document.getElementById("progressBar");
+        const statusLabel = document.getElementById("status");
+
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files[0];
+            fileLabel.textContent = file ? file.name : "Выбрать файл";
+            statusLabel.textContent = file ? "Готово к загрузке." : "Файл еще не выбран.";
+        });
+
+        function uploadFile() {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                statusLabel.textContent = "Сначала выберите файл.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const xhr = new XMLHttpRequest();
+            uploadButton.disabled = true;
+            uploadButton.textContent = "Загрузка...";
+            statusLabel.textContent = "Передаем файл на сервер...";
+
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + "%";
+                    statusLabel.textContent = "Загружено " + percent.toFixed(0) + "%";
+                }
+            };
+
+            xhr.onload = function () {
+                uploadButton.disabled = false;
+                uploadButton.textContent = "Загрузить файл";
+
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    statusLabel.textContent = "Файл успешно загружен.";
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    statusLabel.textContent = "Не удалось загрузить файл.";
+                }
+            };
+
+            xhr.onerror = function () {
+                uploadButton.disabled = false;
+                uploadButton.textContent = "Загрузить файл";
+                statusLabel.textContent = "Ошибка соединения при загрузке.";
+            };
+
+            xhr.open("POST", "/upload", true);
+            xhr.send(formData);
+        }
+    </script>
 </body>
 </html>

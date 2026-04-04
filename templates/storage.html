@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личное хранилище</title>
+    <style>
+        :root {
+            --bg: #091522;
+            --panel: rgba(10, 27, 43, 0.8);
+            --line: rgba(180, 224, 255, 0.14);
+            --text: #f4f8ff;
+            --muted: #9ab0c6;
+            --accent: #6ad7ff;
+            --accent-2: #8cffc5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(106, 215, 255, 0.18), transparent 26%),
+                radial-gradient(circle at bottom right, rgba(140, 255, 197, 0.14), transparent 22%),
+                linear-gradient(140deg, #05111c 0%, #0d2033 100%);
+        }
+
+        .page {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 34px 20px 48px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            letter-spacing: -0.05em;
+        }
+
+        .header p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50px;
+            padding: 0 18px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--line);
+        }
+
+        .panel {
+            padding: 26px;
+            border-radius: 30px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+            backdrop-filter: blur(16px);
+        }
+
+        .files {
+            display: grid;
+            gap: 14px;
+        }
+
+        .file-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            padding: 18px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .file-row strong {
+            display: block;
+            font-size: 1.02rem;
+        }
+
+        .file-row span {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .download-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 18px;
+            border-radius: 16px;
+            color: #06121d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            text-decoration: none;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .empty {
+            padding: 22px;
+            border-radius: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.14);
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        @media (max-width: 760px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .file-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .download-link {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div>
+                <h1>Личное хранилище</h1>
+                <p>{{ username }}, здесь собраны все ваши загруженные файлы. Можно быстро скачать любой документ обратно.</p>
+            </div>
+            <a class="back-link" href="/dashboard">Вернуться на главную</a>
+        </div>
+
+        <div class="panel">
+            {% if files %}
+                <div class="files">
+                    {% for file in files %}
+                        <div class="file-row">
+                            <div>
+                                <strong>{{ file.filename }}</strong>
+                                <span>Файл доступен для скачивания</span>
+                            </div>
+                            <a class="download-link" href="/download/{{ file.id }}">Скачать</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty">Хранилище пока пустое. Загрузите первый файл с главной страницы, и он появится здесь.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
