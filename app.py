@@ -39,10 +39,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 DEFAULT_SHARED_FOLDERS = [
-    {"name": "РњСѓР·С‹РєР°", "slug": "music"},
-    {"name": "Р’РёРґРµРѕ", "slug": "video"},
-    {"name": "Р¤РѕС‚Рѕ", "slug": "photo"},
-    {"name": "Р”РѕРєСѓРјРµРЅС‚С‹", "slug": "documents"},
+    {"name": "Музыка", "slug": "music"},
+    {"name": "Видео", "slug": "video"},
+    {"name": "Фото", "slug": "photo"},
+    {"name": "Документы", "slug": "documents"},
 ]
 INVALID_PATH_CHARS = '<>:"/\\|?*'
 WINDOWS_RESERVED_NAMES = {
@@ -140,6 +140,17 @@ def ensure_default_shared_folders():
             db.session.add(SharedFolder(name=folder["name"], slug=folder["slug"]))
         db.session.commit()
 
+    default_names = {folder["slug"]: folder["name"] for folder in DEFAULT_SHARED_FOLDERS}
+    needs_commit = False
+    for folder in SharedFolder.query.all():
+        normalized_name = default_names.get(folder.slug)
+        if normalized_name and folder.name != normalized_name:
+            folder.name = normalized_name
+            needs_commit = True
+
+    if needs_commit:
+        db.session.commit()
+
     for folder in SharedFolder.query.all():
         get_shared_storage_root(folder)
 
@@ -171,7 +182,7 @@ def can_edit_shared_folders(user):
 
 
 def get_role_label(user):
-    return "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ" if user.is_admin else "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ"
+    return "Администратор" if user.is_admin else "Пользователь"
 
 
 def sanitize_relative_path(raw_path):
@@ -230,9 +241,9 @@ def build_user_badges(user):
     permission = get_user_permission_record(user)
     badges = [get_role_label(user)]
     if permission.can_create_shared_folders:
-        badges.append("РЎРѕР·РґР°РЅРёРµ РѕР±С‰РёС… РїР°РїРѕРє")
+        badges.append("Создание общих папок")
     if permission.can_edit_shared_folders:
-        badges.append("РР·РјРµРЅРµРЅРёРµ РѕР±С‰РёС… РїР°РїРѕРє")
+        badges.append("Изменение общих папок")
     return badges
 
 
@@ -304,12 +315,12 @@ def create_available_path(destination_dir, desired_name):
 
 
 def format_size(size_bytes):
-    units = ["Р‘", "РљР‘", "РњР‘", "Р“Р‘", "РўР‘"]
+    units = ["Б", "КБ", "МБ", "ГБ", "ТБ"]
     size = float(size_bytes)
 
     for unit in units:
         if size < 1024 or unit == units[-1]:
-            if unit == "Р‘":
+            if unit == "Б":
                 return f"{int(size)} {unit}"
             return f"{size:.1f} {unit}"
         size /= 1024
@@ -317,30 +328,30 @@ def format_size(size_bytes):
 
 def describe_file_type(path_obj):
     if path_obj.is_dir():
-        return "РџР°РїРєР°"
+        return "Папка"
 
     extension = path_obj.suffix.lower()
     mapping = {
-        ".mp3": "РђСѓРґРёРѕС„Р°Р№Р»",
-        ".wav": "РђСѓРґРёРѕС„Р°Р№Р»",
-        ".flac": "РђСѓРґРёРѕС„Р°Р№Р»",
-        ".mp4": "Р’РёРґРµРѕ",
-        ".mkv": "Р’РёРґРµРѕ",
-        ".avi": "Р’РёРґРµРѕ",
-        ".jpg": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
-        ".jpeg": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
-        ".png": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
-        ".gif": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
+        ".mp3": "Аудиофайл",
+        ".wav": "Аудиофайл",
+        ".flac": "Аудиофайл",
+        ".mp4": "Видео",
+        ".mkv": "Видео",
+        ".avi": "Видео",
+        ".jpg": "Изображение",
+        ".jpeg": "Изображение",
+        ".png": "Изображение",
+        ".gif": "Изображение",
         ".pdf": "PDF",
-        ".doc": "Р”РѕРєСѓРјРµРЅС‚ Word",
-        ".docx": "Р”РѕРєСѓРјРµРЅС‚ Word",
-        ".xls": "РўР°Р±Р»РёС†Р° Excel",
-        ".xlsx": "РўР°Р±Р»РёС†Р° Excel",
-        ".txt": "РўРµРєСЃС‚РѕРІС‹Р№ С„Р°Р№Р»",
-        ".zip": "РђСЂС…РёРІ",
-        ".rar": "РђСЂС…РёРІ",
+        ".doc": "Документ Word",
+        ".docx": "Документ Word",
+        ".xls": "Таблица Excel",
+        ".xlsx": "Таблица Excel",
+        ".txt": "Текстовый файл",
+        ".zip": "Архив",
+        ".rar": "Архив",
     }
-    return mapping.get(extension, "Р¤Р°Р№Р»")
+    return mapping.get(extension, "Файл")
 
 
 def build_shared_items(folder, current_relative_path):
@@ -467,7 +478,7 @@ def build_personal_items(user, current_relative_path):
 
 
 def build_personal_breadcrumbs(current_relative_path):
-    breadcrumbs = [{"label": "Р›РёС‡РЅРѕРµ С…СЂР°РЅРёР»РёС‰Рµ", "url": url_for("storage")}]
+    breadcrumbs = [{"label": "Личное хранилище", "url": url_for("storage")}]
     current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
 
     for index, part in enumerate(current_parts):
@@ -515,7 +526,7 @@ def build_admin_items(current_relative_path):
 
 
 def build_admin_breadcrumbs(current_relative_path):
-    breadcrumbs = [{"label": "Р’СЃРµ С„Р°Р№Р»С‹", "url": url_for("admin_file_browser")}]
+    breadcrumbs = [{"label": "Все файлы", "url": url_for("admin_file_browser")}]
     current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
 
     for index, part in enumerate(current_parts):
@@ -643,7 +654,7 @@ def login():
         if user and check_password_hash(user.password, request.form['password']):
             login_user(user)
             return redirect('/dashboard')
-        error = "РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ"
+        error = "Неверный логин или пароль"
 
     return render_template('login.html', error=error)
 
@@ -656,13 +667,13 @@ def dashboard():
     theme_preference = get_theme_preference(current_user)
 
     if 6 <= hour < 12:
-        greeting = "Р”РѕР±СЂРѕРµ СѓС‚СЂРѕ"
+        greeting = "Доброе утро"
     elif 12 <= hour < 18:
-        greeting = "Р”РѕР±СЂС‹Р№ РґРµРЅСЊ"
+        greeting = "Добрый день"
     elif 18 <= hour < 24:
-        greeting = "Р”РѕР±СЂС‹Р№ РІРµС‡РµСЂ"
+        greeting = "Добрый вечер"
     else:
-        greeting = "Р”РѕР±СЂРѕР№ РЅРѕС‡Рё"
+        greeting = "Доброй ночи"
 
     ensure_default_shared_folders()
     sync_legacy_personal_files(current_user)
@@ -726,7 +737,7 @@ def shared_upload(folder_id):
 
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
-        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ С„Р°Р№Р»С‹ РЅР° РєРѕРјРїСЊСЋС‚РµСЂРµ.", "error")
+        flash("Сначала выберите файлы на компьютере.", "error")
         return redirect_to_shared(folder, current_relative_path)
 
     saved_count = 0
@@ -740,7 +751,7 @@ def shared_upload(folder_id):
         uploaded_file.save(destination_path)
         saved_count += 1
 
-    flash(f"Р—Р°РіСЂСѓР¶РµРЅРѕ С„Р°Р№Р»РѕРІ: {saved_count}." if saved_count else "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Рµ С„Р°Р№Р»С‹.", "success" if saved_count else "error")
+    flash(f"Загружено файлов: {saved_count}." if saved_count else "Не удалось сохранить выбранные файлы.", "success" if saved_count else "error")
     return redirect_to_shared(folder, current_relative_path)
 
 
@@ -880,18 +891,18 @@ def update_password():
     confirm_password = request.form.get("confirm_password", "")
 
     if not check_password_hash(current_user.password, current_password):
-        flash("РўРµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ РІРІРµРґРµРЅ РЅРµРІРµСЂРЅРѕ.", "error")
+        flash("Текущий пароль введен неверно.", "error")
         return redirect(url_for("profile"))
     if len(new_password) < 4:
-        flash("РќРѕРІС‹Р№ РїР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РјРёРЅРёРјСѓРј 4 СЃРёРјРІРѕР»Р°.", "error")
+        flash("Новый пароль должен содержать минимум 4 символа.", "error")
         return redirect(url_for("profile"))
     if new_password != confirm_password:
-        flash("РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РїР°СЂРѕР»СЏ РЅРµ СЃРѕРІРїР°РґР°РµС‚.", "error")
+        flash("Подтверждение пароля не совпадает.", "error")
         return redirect(url_for("profile"))
 
     current_user.password = generate_password_hash(new_password)
     db.session.commit()
-    flash("РџР°СЂРѕР»СЊ РѕР±РЅРѕРІР»РµРЅ.", "success")
+    flash("Пароль обновлен.", "success")
     return redirect(url_for("profile"))
 
 
@@ -900,14 +911,14 @@ def update_password():
 def update_avatar():
     uploaded_file = request.files.get("avatar")
     if not uploaded_file or not uploaded_file.filename:
-        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ.", "error")
+        flash("Сначала выберите изображение.", "error")
         return redirect(url_for("profile"))
 
     if not save_avatar(current_user, uploaded_file):
-        flash("Р Р°Р·СЂРµС€РµРЅС‹ С‚РѕР»СЊРєРѕ PNG, JPG, JPEG, GIF РёР»Рё WEBP.", "error")
+        flash("Разрешены только PNG, JPG, JPEG, GIF или WEBP.", "error")
         return redirect(url_for("profile"))
 
-    flash("РђРІР°С‚Р°СЂ РѕР±РЅРѕРІР»РµРЅ.", "success")
+    flash("Аватар обновлен.", "success")
     return redirect(url_for("profile"))
 
 
@@ -943,9 +954,9 @@ def create_shared_folder_route():
     folder = create_shared_folder(request.form.get("name", ""), grant_user=current_user)
 
     if not folder:
-        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅРѕРµ РёРјСЏ РѕР±С‰РµР№ РїР°РїРєРё.", "error")
+        flash("Укажите корректное имя общей папки.", "error")
     else:
-        flash(f"РћР±С‰Р°СЏ РїР°РїРєР° В«{folder.name}В» СЃРѕР·РґР°РЅР°.", "success")
+        flash(f"Общая папка «{folder.name}» создана.", "success")
     return redirect(url_for("profile"))
 
 
@@ -957,12 +968,12 @@ def rename_shared_folder_route(folder_id):
     new_name = sanitize_entry_name(request.form.get("name", ""))
 
     if not new_name:
-        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅРѕРµ РЅРѕРІРѕРµ РёРјСЏ РїР°РїРєРё.", "error")
+        flash("Укажите корректное новое имя папки.", "error")
         return redirect(url_for("profile"))
 
     folder.name = new_name
     db.session.commit()
-    flash("РќР°Р·РІР°РЅРёРµ РѕР±С‰РµР№ РїР°РїРєРё РѕР±РЅРѕРІР»РµРЅРѕ.", "success")
+    flash("Название общей папки обновлено.", "success")
     return redirect(url_for("profile"))
 
 
@@ -976,20 +987,20 @@ def admin_create_user():
     is_admin = request.form.get("is_admin") == "on"
 
     if not username:
-        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅС‹Р№ Р»РѕРіРёРЅ РЅРѕРІРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.", "error")
+        flash("Укажите корректный логин нового пользователя.", "error")
         return redirect(url_for("profile"))
     if len(password) < 4:
-        flash("РџР°СЂРѕР»СЊ РЅРѕРІРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РјРёРЅРёРјСѓРј 4 СЃРёРјРІРѕР»Р°.", "error")
+        flash("Пароль нового пользователя должен содержать минимум 4 символа.", "error")
         return redirect(url_for("profile"))
     if User.query.filter_by(username=username).first():
-        flash("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј Р»РѕРіРёРЅРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.", "error")
+        flash("Пользователь с таким логином уже существует.", "error")
         return redirect(url_for("profile"))
 
     user = User(username=username, password=generate_password_hash(password), is_admin=is_admin)
     db.session.add(user)
     db.session.commit()
     ensure_user_permission_record(user)
-    flash(f"РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ В«{username}В» СЃРѕР·РґР°РЅ.", "success")
+    flash(f"Пользователь «{username}» создан.", "success")
     return redirect(url_for("profile", focus_user=user.id))
 
 
@@ -1002,7 +1013,7 @@ def admin_update_user(user_id):
     new_is_admin = request.form.get("is_admin") == "on"
 
     if user.id == current_user.id and not new_is_admin and User.query.filter_by(is_admin=True).count() <= 1:
-        flash("РќРµР»СЊР·СЏ СЃРЅСЏС‚СЊ РїСЂР°РІР° Сѓ РїРѕСЃР»РµРґРЅРµРіРѕ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°.", "error")
+        flash("Нельзя снять права у последнего администратора.", "error")
         return redirect(url_for("profile", focus_user=user.id))
 
     user.is_admin = new_is_admin
@@ -1018,7 +1029,7 @@ def admin_update_user(user_id):
 
     db.session.add(permission)
     db.session.commit()
-    flash(f"РџСЂР°РІР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ В«{user.username}В» РѕР±РЅРѕРІР»РµРЅС‹.", "success")
+    flash(f"Права пользователя «{user.username}» обновлены.", "success")
     return redirect(url_for("profile", focus_user=user.id))
 
 
@@ -1079,7 +1090,7 @@ def storage_upload():
 
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
-        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ С„Р°Р№Р»С‹ РЅР° РєРѕРјРїСЊСЋС‚РµСЂРµ.", "error")
+        flash("Сначала выберите файлы на компьютере.", "error")
         return redirect_to_personal(current_relative_path)
 
     saved_count = 0
@@ -1093,9 +1104,9 @@ def storage_upload():
         saved_count += 1
 
     if saved_count:
-        flash(f"Р—Р°РіСЂСѓР¶РµРЅРѕ С„Р°Р№Р»РѕРІ: {saved_count}.", "success")
+        flash(f"Загружено файлов: {saved_count}.", "success")
     else:
-        flash("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Рµ С„Р°Р№Р»С‹.", "error")
+        flash("Не удалось сохранить выбранные файлы.", "error")
 
     return redirect_to_personal(current_relative_path)
 
@@ -1284,4 +1295,3 @@ if __name__ == '__main__':
         ensure_runtime_schema()
         ensure_default_shared_folders()
     app.run(host="0.0.0.0", port=5000)
-
