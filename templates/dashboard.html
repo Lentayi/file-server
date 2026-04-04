@@ -6,7 +6,6 @@
     <title>Панель управления</title>
     <style>
         :root {
-            --bg: #06131f;
             --panel: rgba(8, 22, 36, 0.72);
             --panel-strong: rgba(8, 22, 36, 0.88);
             --line: rgba(183, 223, 255, 0.16);
@@ -14,7 +13,6 @@
             --muted: #99adc2;
             --accent: #67d5ff;
             --accent-2: #8cffc5;
-            --accent-3: #ffd37a;
             --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
             --radius-lg: 30px;
             --radius-md: 22px;
@@ -36,16 +34,13 @@
                 radial-gradient(circle at 75% 74%, rgba(255, 211, 122, 0.18), transparent 22%),
                 radial-gradient(circle at 32% 82%, rgba(116, 120, 255, 0.18), transparent 20%),
                 linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
-            position: relative;
-            overflow-x: hidden;
-            overflow-y: hidden;
+            overflow: hidden;
         }
 
         body::before,
         body::after {
             content: "";
             position: fixed;
-            inset: auto;
             width: 34rem;
             height: 34rem;
             border-radius: 50%;
@@ -71,8 +66,8 @@
             position: relative;
             z-index: 1;
             max-width: 1400px;
-            margin: 0 auto;
             min-height: 100vh;
+            margin: 0 auto;
             padding: 26px 24px 24px;
             display: flex;
             flex-direction: column;
@@ -86,7 +81,7 @@
             margin-bottom: 18px;
         }
 
-        .hero-copy h1 {
+        .hero h1 {
             margin: 0;
             font-size: clamp(2.4rem, 4vw, 4.5rem);
             line-height: 0.98;
@@ -107,14 +102,8 @@
             display: grid;
             grid-template-columns: minmax(340px, 1.4fr) minmax(280px, 0.95fr) minmax(280px, 0.9fr);
             gap: 22px;
-            align-items: stretch;
             flex: 1;
             min-height: 0;
-        }
-
-        .stack {
-            display: grid;
-            gap: 0;
         }
 
         .card {
@@ -138,13 +127,8 @@
         .card-inner {
             position: relative;
             z-index: 1;
+            height: 100%;
             padding: 24px;
-        }
-
-        .card h2,
-        .card h3 {
-            margin: 0;
-            letter-spacing: -0.03em;
         }
 
         .eyebrow {
@@ -155,16 +139,37 @@
             letter-spacing: 0.18em;
         }
 
-        .folders {
-            min-height: 0;
-        }
-
         .folders-head {
             display: flex;
             justify-content: space-between;
             gap: 16px;
             align-items: flex-start;
             margin-bottom: 18px;
+        }
+
+        .folders-head h2,
+        .disk-card h2 {
+            margin: 0;
+            letter-spacing: -0.03em;
+        }
+
+        .mini-stat {
+            min-width: 116px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mini-stat strong {
+            display: block;
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        .mini-stat span {
+            color: var(--muted);
+            font-size: 0.88rem;
         }
 
         .folder-list {
@@ -189,66 +194,59 @@
             border-radius: 999px;
         }
 
-        .folder-item {
+        .folder-link {
             display: grid;
-            grid-template-columns: 22px 1fr;
+            grid-template-columns: 28px 1fr auto;
             gap: 14px;
             align-items: center;
-            padding: 16px 18px;
+            padding: 18px 20px;
             border-radius: var(--radius-md);
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            text-decoration: none;
             transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
         }
 
-        .folder-item:hover {
+        .folder-link:hover {
             transform: translateY(-2px);
             border-color: rgba(103, 213, 255, 0.38);
             background: rgba(103, 213, 255, 0.08);
         }
 
-        .folder-checkbox {
-            width: 22px;
+        .folder-icon {
+            width: 28px;
             height: 22px;
-            border-radius: 7px;
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            background: linear-gradient(180deg, #ffd76b, #ffb347);
+            position: relative;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        }
+
+        .folder-icon::before {
+            content: "";
+            position: absolute;
+            top: -5px;
+            left: 3px;
+            width: 12px;
+            height: 7px;
+            border-radius: 4px 4px 0 0;
+            background: #ffe59b;
         }
 
         .folder-name {
-            font-size: 1.05rem;
+            font-size: 1.08rem;
             font-weight: 700;
-            margin-bottom: 4px;
         }
 
-        .folder-desc {
+        .folder-arrow {
             color: var(--muted);
-            font-size: 0.92rem;
-        }
-
-        .mini-stat {
-            min-width: 116px;
-            padding: 12px 14px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .mini-stat strong {
-            display: block;
             font-size: 1.4rem;
-            margin-bottom: 4px;
         }
 
-        .mini-stat span {
-            color: var(--muted);
-            font-size: 0.88rem;
-        }
-
-        .disk-card {
-            min-height: 100%;
+        .disk-card .card-inner {
             display: flex;
+            flex-direction: column;
         }
 
         .disk-visual {
@@ -301,6 +299,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
+            margin-top: auto;
         }
 
         .disk-stat {
@@ -323,6 +322,11 @@
 
         .profile-card {
             background: var(--panel-strong);
+        }
+
+        .profile-card .card-inner {
+            display: flex;
+            flex-direction: column;
         }
 
         .profile-head {
@@ -365,14 +369,10 @@
             color: #bdeeff;
         }
 
-        .profile-copy {
-            text-align: center;
-            margin-bottom: 18px;
-        }
-
         .action-group {
             display: grid;
             gap: 12px;
+            margin-top: auto;
         }
 
         .action {
@@ -388,7 +388,6 @@
             font-size: 1rem;
             font-weight: 700;
             text-decoration: none;
-            cursor: pointer;
             transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
         }
 
@@ -419,7 +418,7 @@
 
         @media (max-width: 720px) {
             .page {
-                padding: 20px 16px 20px;
+                padding: 20px 16px;
             }
 
             .hero {
@@ -448,14 +447,14 @@
 <body>
     <div class="page">
         <section class="hero">
-            <div class="hero-copy">
+            <div>
                 <h1>{{ greeting }}, {{ username }}!</h1>
             </div>
             <div class="date-chip">{{ today_label }}</div>
         </section>
 
         <section class="layout">
-            <article class="card folders">
+            <article class="card">
                 <div class="card-inner">
                     <div class="folders-head">
                         <div>
@@ -470,50 +469,48 @@
 
                     <div class="folder-list">
                         {% for folder in shared_folders %}
-                            <div class="folder-item">
-                                <div class="folder-checkbox"></div>
-                                <div>
-                                    <div class="folder-name">{{ folder.name }}</div>
-                                    <div class="folder-desc">{{ folder.description }}</div>
-                                </div>
-                            </div>
+                            <a class="folder-link" href="{{ url_for('shared_explorer', folder_slug=folder.slug) }}">
+                                <span class="folder-icon"></span>
+                                <span class="folder-name">{{ folder.name }}</span>
+                                <span class="folder-arrow">›</span>
+                            </a>
                         {% endfor %}
                     </div>
                 </div>
             </article>
 
-            <div class="stack">
-                <article class="card disk-card">
-                    <div class="card-inner">
+            <article class="card disk-card">
+                <div class="card-inner">
+                    <div>
                         <div class="eyebrow">Хранилище</div>
                         <h2>Заполнение диска</h2>
+                    </div>
 
-                        <div class="disk-visual">
-                            <div class="disk-ring">
-                                <div class="disk-percent">
-                                    <strong>{{ percent }}%</strong>
-                                    <span>занято</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="disk-stats">
-                            <div class="disk-stat">
-                                <span>Использовано</span>
-                                <strong>{{ used_gb }} ГБ</strong>
-                            </div>
-                            <div class="disk-stat">
-                                <span>Свободно</span>
-                                <strong>{{ free_gb }} ГБ</strong>
-                            </div>
-                            <div class="disk-stat">
-                                <span>Всего</span>
-                                <strong>{{ total_gb }} ГБ</strong>
+                    <div class="disk-visual">
+                        <div class="disk-ring">
+                            <div class="disk-percent">
+                                <strong>{{ percent }}%</strong>
+                                <span>занято</span>
                             </div>
                         </div>
                     </div>
-                </article>
-            </div>
+
+                    <div class="disk-stats">
+                        <div class="disk-stat">
+                            <span>Использовано</span>
+                            <strong>{{ used_gb }} ГБ</strong>
+                        </div>
+                        <div class="disk-stat">
+                            <span>Свободно</span>
+                            <strong>{{ free_gb }} ГБ</strong>
+                        </div>
+                        <div class="disk-stat">
+                            <span>Всего</span>
+                            <strong>{{ total_gb }} ГБ</strong>
+                        </div>
+                    </div>
+                </div>
+            </article>
 
             <article class="card profile-card">
                 <div class="card-inner">
