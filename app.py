@@ -254,11 +254,98 @@ def get_clipboard():
     return clipboard
 
 
+def get_personal_root(user):
+    personal_root = get_upload_root() / "personal" / f"user_{user.id}"
+    personal_root.mkdir(parents=True, exist_ok=True)
+    return personal_root
+
+
+def sync_legacy_personal_files(user):
+    personal_root = get_personal_root(user)
+    updated = False
+
+    for file_record in File.query.filter_by(owner_id=user.id).all():
+        source_path = Path(file_record.path).resolve()
+        if not source_path.exists() or source_path.parent == personal_root:
+            continue
+
+        destination_path = create_available_path(personal_root, sanitize_entry_name(source_path.name) or source_path.name)
+        shutil.move(str(source_path), str(destination_path))
+        file_record.path = str(destination_path)
+        file_record.filename = destination_path.name
+        updated = True
+
+    if updated:
+        db.session.commit()
+
+
+def resolve_personal_path(user, relative_path=""):
+    root = get_personal_root(user).resolve()
+    safe_relative_path = sanitize_relative_path(relative_path)
+    target = (root / safe_relative_path).resolve()
+
+    if target != root and root not in target.parents:
+        abort(403)
+
+    return root, target, safe_relative_path
+
+
+def build_personal_items(user, current_relative_path):
+    root_directory, current_directory, _ = resolve_personal_path(user, current_relative_path)
+    items = []
+
+    for child in sorted(current_directory.iterdir(), key=lambda entry: (not entry.is_dir(), entry.name.lower())):
+        child_relative_path = child.relative_to(root_directory).as_posix()
+        stats = child.stat()
+        items.append(
+            {
+                "name": child.name,
+                "relative_path": child_relative_path,
+                "is_dir": child.is_dir(),
+                "modified_at": datetime.fromtimestamp(stats.st_mtime).strftime("%d.%m.%Y %H:%M"),
+                "size": "" if child.is_dir() else format_size(stats.st_size),
+                "type_label": describe_file_type(child),
+                "open_url": (
+                    url_for("storage", path=child_relative_path)
+                    if child.is_dir()
+                    else url_for("storage_download", path=child_relative_path)
+                ),
+            }
+        )
+
+    return items
+
+
+def build_personal_breadcrumbs(current_relative_path):
+    breadcrumbs = [{"label": "Личное хранилище", "url": url_for("storage")}]
+    current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
+
+    for index, part in enumerate(current_parts):
+        relative_path = "/".join(current_parts[: index + 1])
+        breadcrumbs.append({"label": part, "url": url_for("storage", path=relative_path)})
+
+    return breadcrumbs
+
+
+def get_personal_clipboard():
+    clipboard = session.get("personal_clipboard")
+    if not clipboard or not clipboard.get("items"):
+        return None
+    return clipboard
+
+
 def redirect_to_shared(folder_slug, current_relative_path=""):
     safe_relative_path = sanitize_relative_path(current_relative_path)
     if safe_relative_path:
         return redirect(url_for("shared_explorer", folder_slug=folder_slug, path=safe_relative_path))
     return redirect(url_for("shared_explorer", folder_slug=folder_slug))
+
+
+def redirect_to_personal(current_relative_path=""):
+    safe_relative_path = sanitize_relative_path(current_relative_path)
+    if safe_relative_path:
+        return redirect(url_for("storage", path=safe_relative_path))
+    return redirect(url_for("storage"))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -513,8 +600,161 @@ def download(file_id):
 @app.route('/storage')
 @login_required
 def storage():
-    files = File.query.filter_by(owner_id=current_user.id).all()
-    return render_template("storage.html", files=files, username=current_user.username)
+    sync_legacy_personal_files(current_user)
+    _, current_directory, current_relative_path = resolve_personal_path(current_user, request.args.get("path", ""))
+    if not current_directory.exists() or not current_directory.is_dir():
+        abort(404)
+
+    clipboard = get_personal_clipboard()
+    parent_relative_path = ""
+    if current_relative_path:
+        parent_relative_path = "/".join(current_relative_path.split("/")[:-1])
+
+    return render_template(
+        "personal_explorer.html",
+        username=current_user.username,
+        items=build_personal_items(current_user, current_relative_path),
+        breadcrumbs=build_personal_breadcrumbs(current_relative_path),
+        current_relative_path=current_relative_path,
+        parent_relative_path=parent_relative_path,
+        clipboard=clipboard,
+        clipboard_count=len(clipboard["items"]) if clipboard else 0,
+        clipboard_mode=clipboard["mode"] if clipboard else "",
+    )
+
+
+@app.route('/storage/upload', methods=['POST'])
+@login_required
+def storage_upload():
+    sync_legacy_personal_files(current_user)
+    _, destination_directory, current_relative_path = resolve_personal_path(current_user, request.form.get("current_path", ""))
+    if not destination_directory.is_dir():
+        abort(404)
+
+    uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
+    if not uploaded_files:
+        flash("Сначала выберите файлы на компьютере.", "error")
+        return redirect_to_personal(current_relative_path)
+
+    saved_count = 0
+    for uploaded_file in uploaded_files:
+        safe_name = sanitize_entry_name(Path(uploaded_file.filename).name)
+        if not safe_name:
+            continue
+
+        destination_path = create_available_path(destination_directory, safe_name)
+        uploaded_file.save(destination_path)
+        saved_count += 1
+
+    if saved_count:
+        flash(f"Загружено файлов: {saved_count}.", "success")
+    else:
+        flash("Не удалось сохранить выбранные файлы.", "error")
+
+    return redirect_to_personal(current_relative_path)
+
+
+@app.route('/storage/action', methods=['POST'])
+@login_required
+def storage_action():
+    sync_legacy_personal_files(current_user)
+    action = request.form.get("action", "")
+    current_relative_path = request.form.get("current_path", "")
+    _, current_directory, current_relative_path = resolve_personal_path(current_user, current_relative_path)
+    if not current_directory.is_dir():
+        abort(404)
+
+    selected_relative_paths = []
+    for relative_path in request.form.getlist("selected_paths"):
+        safe_relative_path = sanitize_relative_path(relative_path)
+        if safe_relative_path:
+            selected_relative_paths.append(safe_relative_path)
+
+    if action == "create_folder":
+        folder_name = sanitize_entry_name(request.form.get("folder_name", ""))
+        if not folder_name:
+            flash("Укажите корректное имя папки.", "error")
+            return redirect_to_personal(current_relative_path)
+
+        new_folder_path = create_available_path(current_directory, folder_name)
+        new_folder_path.mkdir(parents=False, exist_ok=False)
+        flash(f"Папка «{new_folder_path.name}» создана.", "success")
+        return redirect_to_personal(current_relative_path)
+
+    if action in {"copy", "cut"}:
+        if not selected_relative_paths:
+            flash("Выберите хотя бы один файл или папку.", "error")
+            return redirect_to_personal(current_relative_path)
+
+        session["personal_clipboard"] = {"mode": action, "items": selected_relative_paths}
+        flash("Элементы добавлены в буфер обмена.", "success")
+        return redirect_to_personal(current_relative_path)
+
+    if action == "paste":
+        clipboard = get_personal_clipboard()
+        if not clipboard:
+            flash("Буфер обмена пуст.", "error")
+            return redirect_to_personal(current_relative_path)
+
+        transferred_count = 0
+        for relative_path in clipboard["items"]:
+            _, source_path, _ = resolve_personal_path(current_user, relative_path)
+            if not source_path.exists():
+                continue
+
+            if source_path.is_dir() and (current_directory == source_path or source_path in current_directory.parents):
+                continue
+
+            if clipboard["mode"] == "cut" and source_path.parent == current_directory:
+                continue
+
+            destination_path = create_available_path(current_directory, source_path.name)
+            if clipboard["mode"] == "copy":
+                copy_entry(source_path, destination_path)
+            else:
+                shutil.move(str(source_path), str(destination_path))
+            transferred_count += 1
+
+        if clipboard["mode"] == "cut":
+            session.pop("personal_clipboard", None)
+
+        if transferred_count:
+            flash("Буфер обмена вставлен.", "success")
+        else:
+            flash("Не удалось вставить выбранные элементы.", "error")
+        return redirect_to_personal(current_relative_path)
+
+    if action == "delete":
+        if not selected_relative_paths:
+            flash("Сначала отметьте элементы для удаления.", "error")
+            return redirect_to_personal(current_relative_path)
+
+        deleted_count = 0
+        for relative_path in selected_relative_paths:
+            _, target_path, _ = resolve_personal_path(current_user, relative_path)
+            if not target_path.exists():
+                continue
+            if target_path.is_dir():
+                shutil.rmtree(target_path)
+            else:
+                target_path.unlink()
+            deleted_count += 1
+
+        flash(f"Удалено элементов: {deleted_count}.", "success")
+        return redirect_to_personal(current_relative_path)
+
+    flash("Неизвестное действие.", "error")
+    return redirect_to_personal(current_relative_path)
+
+
+@app.route('/storage/download')
+@login_required
+def storage_download():
+    sync_legacy_personal_files(current_user)
+    _, target_path, _ = resolve_personal_path(current_user, request.args.get("path", ""))
+    if not target_path.exists() or not target_path.is_file():
+        abort(404)
+    return send_file(target_path, as_attachment=True, download_name=target_path.name)
 
 
 @app.route('/logout')

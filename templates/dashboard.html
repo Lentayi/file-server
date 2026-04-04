@@ -247,12 +247,14 @@
         .disk-card .card-inner {
             display: flex;
             flex-direction: column;
+            align-items: center;
         }
 
         .disk-visual {
             display: grid;
             place-items: center;
             margin: 10px 0 18px;
+            width: 100%;
         }
 
         .disk-ring {
@@ -300,6 +302,7 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-top: auto;
+            width: 100%;
         }
 
         .disk-stat {
@@ -481,7 +484,7 @@
 
             <article class="card disk-card">
                 <div class="card-inner">
-                    <div>
+                    <div style="width: 100%;">
                         <div class="eyebrow">Хранилище</div>
                         <h2>Заполнение диска</h2>
                     </div>

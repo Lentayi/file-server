@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личное хранилище</title>
+    <style>
+        :root {
+            --shell-bg: #e9edf4;
+            --window-bg: #fdfefe;
+            --sidebar-bg: #f4f6fa;
+            --toolbar-bg: #f8fafc;
+            --line: #dbe3ef;
+            --line-strong: #c7d3e3;
+            --text: #162334;
+            --muted: #69798f;
+            --blue: #2f7df6;
+            --blue-soft: #e8f1ff;
+            --danger: #d44f57;
+            --success: #23825d;
+            --shadow: 0 24px 60px rgba(35, 53, 79, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(81, 134, 255, 0.12), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(74, 186, 255, 0.14), transparent 20%),
+                var(--shell-bg);
+        }
+
+        .app {
+            min-height: 100vh;
+            padding: 14px;
+        }
+
+        .window {
+            height: calc(100vh - 28px);
+            display: grid;
+            grid-template-columns: 278px minmax(0, 1fr);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 24px;
+            background: var(--window-bg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding: 18px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--line);
+        }
+
+        .sidebar-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .dashboard-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid var(--line);
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .upload-box,
+        .sidebar-panel {
+            padding: 16px;
+            border-radius: 18px;
+            background: #ffffff;
+            border: 1px solid var(--line);
+        }
+
+        .upload-box h3,
+        .sidebar-panel h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+        }
+
+        .sidebar-note {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px dashed var(--line-strong);
+            background: #f8fbff;
+            color: var(--text);
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .sidebar-button,
+        .toolbar-button,
+        .create-button {
+            min-height: 42px;
+            padding: 0 16px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #ffffff;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 140ms ease, transform 140ms ease, border-color 140ms ease;
+        }
+
+        .sidebar-button:hover,
+        .toolbar-button:hover,
+        .create-button:hover {
+            transform: translateY(-1px);
+            border-color: #b9c9de;
+        }
+
+        .sidebar-button.primary,
+        .create-button {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: #ffffff;
+        }
+
+        .toolbar-button.danger {
+            color: var(--danger);
+        }
+
+        .sidebar-button.full {
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .storage-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--blue-soft);
+            color: var(--blue);
+            font-weight: 700;
+        }
+
+        .storage-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #7cc7ff, #2f7df6);
+        }
+
+        .clipboard-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #f7fbff;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, #ffffff, #fbfdff);
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .title-row h1 {
+            margin: 0;
+            font-size: 1.45rem;
+            letter-spacing: -0.03em;
+        }
+
+        .breadcrumbs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            color: var(--muted);
+        }
+
+        .breadcrumbs a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .breadcrumbs span {
+            color: #97a6bb;
+        }
+
+        .toolbar-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .path-indicator {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .create-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .create-input {
+            min-width: 220px;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        .create-input:focus {
+            border-color: #a8c5ff;
+            box-shadow: 0 0 0 4px rgba(47, 125, 246, 0.1);
+        }
+
+        .flash-stack {
+            display: grid;
+            gap: 10px;
+            padding: 14px 22px 0;
+        }
+
+        .flash {
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #f8fbff;
+        }
+
+        .flash.success {
+            color: var(--success);
+            border-color: rgba(35, 130, 93, 0.18);
+            background: rgba(35, 130, 93, 0.08);
+        }
+
+        .flash.error {
+            color: var(--danger);
+            border-color: rgba(212, 79, 87, 0.18);
+            background: rgba(212, 79, 87, 0.08);
+        }
+
+        .content {
+            flex: 1;
+            min-height: 0;
+            padding: 16px 22px 22px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-shell {
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .list-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--toolbar-bg);
+            border-bottom: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .list-scroll {
+            height: calc(100% - 50px);
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--muted);
+            background: #ffffff;
+            border-bottom: 1px solid var(--line);
+        }
+
+        tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #eef2f8;
+            vertical-align: middle;
+        }
+
+        tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        .name-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .entry-icon {
+            width: 20px;
+            height: 18px;
+            flex: 0 0 auto;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .entry-icon.folder {
+            background: linear-gradient(180deg, #ffd76b, #ffb347);
+        }
+
+        .entry-icon.folder::before {
+            content: "";
+            position: absolute;
+            top: -4px;
+            left: 2px;
+            width: 10px;
+            height: 6px;
+            border-radius: 4px 4px 0 0;
+            background: #ffe59b;
+        }
+
+        .entry-icon.file {
+            border: 1px solid #cbd6e6;
+            background: linear-gradient(180deg, #ffffff, #eef4ff);
+        }
+
+        .entry-link {
+            min-width: 0;
+            color: var(--text);
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .entry-link:hover {
+            color: var(--blue);
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .empty {
+            padding: 42px 22px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        @media (max-width: 1180px) {
+            .window {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: calc(100vh - 28px);
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .create-form {
+                width: 100%;
+            }
+
+            .create-input {
+                flex: 1;
+                min-width: 0;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .toolbar-grid,
+            .title-row {
+                grid-template-columns: 1fr;
+                display: grid;
+            }
+
+            .list-scroll {
+                height: auto;
+                max-height: 60vh;
+            }
+
+            thead {
+                display: none;
+            }
+
+            table,
+            tbody,
+            tr,
+            td {
+                display: block;
+                width: 100%;
+            }
+
+            tbody tr {
+                padding: 10px 0;
+            }
+
+            tbody td {
+                border-bottom: 0;
+                padding: 6px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="window">
+            <aside class="sidebar">
+                <div class="sidebar-top">
+                    <div class="sidebar-title">Личное хранилище</div>
+                    <a class="dashboard-link" href="/dashboard">На главную</a>
+                </div>
+
+                <form class="upload-box" method="POST" action="{{ url_for('storage_upload') }}" enctype="multipart/form-data">
+                    <h3>Загрузка с компьютера</h3>
+                    <p class="sidebar-note">Добавьте файлы сразу в открытую папку.</p>
+                    <input type="hidden" name="current_path" value="{{ current_relative_path }}">
+                    <label class="upload-label" for="filesInput">Выбрать файлы</label>
+                    <input class="file-input" type="file" id="filesInput" name="files" multiple>
+                    <button class="sidebar-button primary full" type="submit">Загрузить</button>
+                </form>
+
+                <div class="sidebar-panel">
+                    <h3>Пользователь</h3>
+                    <div class="storage-chip">
+                        <span class="storage-icon"></span>
+                        <span>{{ username }}</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel">
+                    <h3>Буфер обмена</h3>
+                    {% if clipboard %}
+                        <div class="clipboard-badge">
+                            <span>{{ clipboard_mode == 'cut' and 'Вырезано' or 'Скопировано' }}</span>
+                            <strong>{{ clipboard_count }}</strong>
+                        </div>
+                    {% else %}
+                        <p class="sidebar-note" style="margin-bottom: 0;">Буфер пуст. Выберите файлы или папки и нажмите «Копировать» или «Вырезать».</p>
+                    {% endif %}
+                </div>
+            </aside>
+
+            <main class="main">
+                <div class="topbar">
+                    <div class="title-row">
+                        <div>
+                            <h1>Личное хранилище</h1>
+                            <div class="breadcrumbs">
+                                {% for crumb in breadcrumbs %}
+                                    {% if not loop.first %}<span>›</span>{% endif %}
+                                    <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="path-indicator">
+                            {% if current_relative_path %}
+                                Текущий путь: {{ current_relative_path }}
+                            {% else %}
+                                Корневая папка хранилища
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="toolbar-grid">
+                        <div class="toolbar-actions">
+                            <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="copy">Копировать</button>
+                            <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="cut">Вырезать</button>
+                            <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="paste">Вставить</button>
+                            <button class="toolbar-button danger" form="selectionForm" type="submit" name="action" value="delete" onclick="return confirm('Удалить выбранные элементы?');">Удалить</button>
+                            {% if current_relative_path %}
+                                <a class="toolbar-button" href="{{ url_for('storage', path=parent_relative_path) }}" style="text-decoration: none; display: inline-flex; align-items: center;">Назад</a>
+                            {% endif %}
+                        </div>
+
+                        <form class="create-form" method="POST" action="{{ url_for('storage_action') }}">
+                            <input type="hidden" name="current_path" value="{{ current_relative_path }}">
+                            <input class="create-input" type="text" name="folder_name" placeholder="Новая папка" required>
+                            <button class="create-button" type="submit" name="action" value="create_folder">Создать папку</button>
+                        </form>
+                    </div>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="flash {{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <div class="content">
+                    <form class="list-shell" id="selectionForm" method="POST" action="{{ url_for('storage_action') }}">
+                        <input type="hidden" name="current_path" value="{{ current_relative_path }}">
+
+                        <div class="list-toolbar">
+                            <div>Элементы: {{ items|length }}</div>
+                            <div id="selectionCounter">Выбрано: 0</div>
+                        </div>
+
+                        <div class="list-scroll">
+                            {% if items %}
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 48px;">
+                                                <input type="checkbox" id="selectAll">
+                                            </th>
+                                            <th>Имя</th>
+                                            <th>Дата изменения</th>
+                                            <th>Тип</th>
+                                            <th>Размер</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in items %}
+                                            <tr>
+                                                <td>
+                                                    <input class="entry-checkbox" type="checkbox" name="selected_paths" value="{{ item.relative_path }}">
+                                                </td>
+                                                <td>
+                                                    <div class="name-cell">
+                                                        <span class="entry-icon {{ 'folder' if item.is_dir else 'file' }}"></span>
+                                                        <a class="entry-link" href="{{ item.open_url }}">{{ item.name }}</a>
+                                                    </div>
+                                                </td>
+                                                <td class="muted">{{ item.modified_at }}</td>
+                                                <td class="muted">{{ item.type_label }}</td>
+                                                <td class="muted">{{ item.size or '—' }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                <div class="empty">Папка пуста. Загрузите файлы слева или создайте новую вложенную папку.</div>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById("filesInput");
+        const fileLabel = document.querySelector(".upload-label");
+        const selectAll = document.getElementById("selectAll");
+        const checkboxes = Array.from(document.querySelectorAll(".entry-checkbox"));
+        const selectionCounter = document.getElementById("selectionCounter");
+
+        if (fileInput && fileLabel) {
+            fileInput.addEventListener("change", () => {
+                const count = fileInput.files.length;
+                fileLabel.textContent = count ? `Выбрано файлов: ${count}` : "Выбрать файлы";
+            });
+        }
+
+        function updateSelectionCounter() {
+            const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
+            if (selectionCounter) {
+                selectionCounter.textContent = `Выбрано: ${selected}`;
+            }
+            if (selectAll) {
+                selectAll.checked = selected > 0 && selected === checkboxes.length;
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener("change", () => {
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateSelectionCounter();
+            });
+        }
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", updateSelectionCounter);
+        });
+    </script>
+</body>
+</html>
