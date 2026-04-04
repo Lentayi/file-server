@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+    <style>
+        :root {
+            --bg: #ecf2f8;
+            --panel: rgba(255, 255, 255, 0.92);
+            --line: #dce5f0;
+            --text: #162334;
+            --muted: #6c7a90;
+            --blue: #2f7df6;
+            --blue-soft: #e9f1ff;
+            --green: #23825d;
+            --danger: #d44f57;
+            --shadow: 0 24px 60px rgba(35, 53, 79, 0.14);
+            --radius-lg: 28px;
+            --radius-md: 20px;
+            --radius-sm: 14px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(47, 125, 246, 0.12), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(116, 213, 255, 0.12), transparent 22%),
+                var(--bg);
+        }
+
+        .page {
+            max-width: 1520px;
+            margin: 0 auto;
+            padding: 28px 24px 40px;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 22px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(2.2rem, 4vw, 3.8rem);
+            letter-spacing: -0.05em;
+        }
+
+        .hero p {
+            margin: 10px 0 0;
+            color: var(--muted);
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .link-button,
+        .submit-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .submit-button.primary {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: #fff;
+        }
+
+        .flash-stack {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .flash.success {
+            color: var(--green);
+            border-color: rgba(35, 130, 93, 0.16);
+            background: rgba(35, 130, 93, 0.08);
+        }
+
+        .flash.error {
+            color: var(--danger);
+            border-color: rgba(212, 79, 87, 0.16);
+            background: rgba(212, 79, 87, 0.08);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(300px, 0.9fr) minmax(320px, 1fr) minmax(320px, 1.2fr);
+            gap: 18px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-inner {
+            padding: 22px;
+        }
+
+        .eyebrow {
+            margin-bottom: 10px;
+            color: var(--blue);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+        }
+
+        .card h2,
+        .card h3 {
+            margin: 0 0 10px;
+            letter-spacing: -0.03em;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .profile-head {
+            display: grid;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #04111b;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #abf0ff 32%, #67d5ff 65%, #1b7ca8 100%);
+            border: 6px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            margin-top: 16px;
+            font-size: 1.9rem;
+            font-weight: 800;
+        }
+
+        .role-chip {
+            margin-top: 10px;
+            display: inline-flex;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--blue-soft);
+            color: var(--blue);
+            font-weight: 700;
+        }
+
+        .badge-list,
+        .folder-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .badge {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #f4f8ff;
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="file"] {
+            width: 100%;
+            min-height: 46px;
+            padding: 0 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+        }
+
+        input[type="file"] {
+            padding: 10px 14px;
+        }
+
+        .folder-grid,
+        .user-list {
+            display: grid;
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .folder-row,
+        .user-card {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.78);
+        }
+
+        .folder-row form,
+        .user-card form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .mini-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .admin-section {
+            margin-top: 18px;
+        }
+
+        .wide-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 0.8fr) minmax(400px, 1.2fr);
+            gap: 18px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 1220px) {
+            .grid,
+            .wide-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .page {
+                padding: 20px 16px 30px;
+            }
+
+            .hero {
+                flex-direction: column;
+            }
+
+            .checkbox-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="hero">
+            <div>
+                <h1>Личный кабинет</h1>
+                <p>Здесь можно управлять своим профилем, паролем, аватаром и правами доступа.</p>
+            </div>
+            <div class="hero-actions">
+                <a class="link-button" href="/dashboard">На главную</a>
+                <a class="link-button" href="/storage">Личное хранилище</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="grid">
+            <article class="card">
+                <div class="card-inner profile-head">
+                    <div class="avatar">
+                        {% if avatar_url %}
+                            <img src="{{ avatar_url }}" alt="{{ username }}">
+                        {% else %}
+                            {{ avatar_text }}
+                        {% endif %}
+                    </div>
+                    <div class="profile-name">{{ username }}</div>
+                    <div class="role-chip">{{ role_label }}</div>
+                    <div class="badge-list">
+                        {% for badge in rights_badges %}
+                            <span class="badge">{{ badge }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+
+            <div class="stack">
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Аватар</div>
+                        <h2>Изменение аватара</h2>
+                        <p>Поддерживаются PNG, JPG, JPEG, GIF и WEBP.</p>
+                        <form class="form-grid" method="POST" action="{{ url_for('update_avatar') }}" enctype="multipart/form-data">
+                            <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp" required>
+                            <button class="submit-button primary" type="submit">Сохранить аватар</button>
+                        </form>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Безопасность</div>
+                        <h2>Смена пароля</h2>
+                        <form class="form-grid" method="POST" action="{{ url_for('update_password') }}">
+                            <input type="password" name="current_password" placeholder="Текущий пароль" required>
+                            <input type="password" name="new_password" placeholder="Новый пароль" required>
+                            <input type="password" name="confirm_password" placeholder="Подтвердите новый пароль" required>
+                            <button class="submit-button primary" type="submit">Обновить пароль</button>
+                        </form>
+                    </div>
+                </article>
+            </div>
+
+            <article class="card">
+                <div class="card-inner">
+                    <div class="eyebrow">Доступы</div>
+                    <h2>Ваши права и папки</h2>
+                    <p>Ниже показаны роль, расширенные права и список общих папок, которые вам доступны.</p>
+                    <div class="folder-badges">
+                        {% for badge in rights_badges %}
+                            <span class="badge">{{ badge }}</span>
+                        {% endfor %}
+                        {% if accessible_shared_folders %}
+                            {% for folder in accessible_shared_folders %}
+                                <span class="badge">{{ folder.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="badge">Нет доступа к общим папкам</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        {% if can_create_shared_folders or can_edit_shared_folders or current_user.is_admin %}
+            <section class="wide-grid admin-section">
+                {% if can_create_shared_folders %}
+                    <article class="card">
+                        <div class="card-inner">
+                            <div class="eyebrow">Общие папки</div>
+                            <h2>Создание новой общей папки</h2>
+                            <form class="form-grid" method="POST" action="{{ url_for('create_shared_folder_route') }}">
+                                <input type="text" name="name" placeholder="Название общей папки" required>
+                                <button class="submit-button primary" type="submit">Создать общую папку</button>
+                            </form>
+                        </div>
+                    </article>
+                {% endif %}
+
+                {% if can_edit_shared_folders %}
+                    <article class="card">
+                        <div class="card-inner">
+                            <div class="eyebrow">Общие папки</div>
+                            <h2>Изменение существующих папок</h2>
+                            <div class="folder-grid">
+                                {% for folder in all_shared_folders %}
+                                    <div class="folder-row">
+                                        <div class="mini-title">{{ folder.name }}</div>
+                                        <form method="POST" action="{{ url_for('rename_shared_folder_route', folder_id=folder.id) }}">
+                                            <input type="text" name="name" value="{{ folder.name }}" required>
+                                            <button class="submit-button" type="submit">Переименовать</button>
+                                        </form>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </article>
+                {% endif %}
+            </section>
+        {% endif %}
+
+        {% if current_user.is_admin %}
+            <section class="wide-grid admin-section">
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Администрирование</div>
+                        <h2>Создание нового пользователя</h2>
+                        <form class="form-grid" method="POST" action="{{ url_for('admin_create_user') }}">
+                            <input type="text" name="username" placeholder="Логин" required>
+                            <input type="password" name="password" placeholder="Пароль" required>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="is_admin">
+                                <span>Сразу выдать права администратора</span>
+                            </label>
+                            <button class="submit-button primary" type="submit">Создать пользователя</button>
+                        </form>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Администрирование</div>
+                        <h2>Управление пользователями</h2>
+                        <div class="user-list">
+                            {% for user in all_users %}
+                                <div class="user-card">
+                                    <div class="mini-title">{{ user.username }}</div>
+                                    <form method="POST" action="{{ url_for('admin_update_user', user_id=user.id) }}">
+                                        <div class="checkbox-grid">
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %}>
+                                                <span>Админские права</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="can_create_shared_folders" {% if permission_map[user.id].can_create_shared_folders %}checked{% endif %}>
+                                                <span>Создание общих папок</span>
+                                            </label>
+                                            <label class="checkbox-item">
+                                                <input type="checkbox" name="can_edit_shared_folders" {% if permission_map[user.id].can_edit_shared_folders %}checked{% endif %}>
+                                                <span>Изменение общих папок</span>
+                                            </label>
+                                        </div>
+
+                                        <div class="mini-title">Доступ к общим папкам</div>
+                                        <div class="checkbox-grid">
+                                            {% for folder in all_shared_folders %}
+                                                <label class="checkbox-item">
+                                                    <input type="checkbox" name="folder_access" value="{{ folder.id }}" {% if folder.id in folder_access_map[user.id] %}checked{% endif %}>
+                                                    <span>{{ folder.name }}</span>
+                                                </label>
+                                            {% endfor %}
+                                        </div>
+
+                                        <button class="submit-button primary" type="submit">Сохранить права</button>
+                                    </form>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </article>
+            </section>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -524,7 +524,7 @@
                     <a class="dashboard-link" href="/dashboard">На главную</a>
                 </div>
 
-                <form class="upload-box" method="POST" action="{{ url_for('shared_upload', folder_slug=folder_slug) }}" enctype="multipart/form-data">
+                <form class="upload-box" method="POST" action="{{ url_for('shared_upload', folder_id=folder.id) }}" enctype="multipart/form-data">
                     <h3>Загрузка с компьютера</h3>
                     <p class="sidebar-note">Добавьте файлы сразу в открытую папку.</p>
                     <input type="hidden" name="current_path" value="{{ current_relative_path }}">
@@ -534,13 +534,13 @@
                 </form>
 
                 <div class="sidebar-panel">
-                    <h3>Разделы</h3>
-                    <div class="section-list">
-                        {% for shared_folder in shared_folders %}
-                            <a class="section-link {% if shared_folder.slug == folder_slug %}active{% endif %}" href="{{ url_for('shared_explorer', folder_slug=shared_folder.slug) }}">
-                                <span class="section-icon"></span>
-                                <span>{{ shared_folder.name }}</span>
-                            </a>
+                        <h3>Разделы</h3>
+                        <div class="section-list">
+                            {% for shared_folder in shared_folders %}
+                                <a class="section-link {% if shared_folder.id == folder.id %}active{% endif %}" href="{{ url_for('shared_explorer', folder_id=shared_folder.id) }}">
+                                    <span class="section-icon"></span>
+                                    <span>{{ shared_folder.name }}</span>
+                                </a>
                         {% endfor %}
                     </div>
                 </div>
@@ -565,7 +565,7 @@
                             <h1>{{ folder_name }}</h1>
                             <div class="breadcrumbs">
                                 {% for crumb in breadcrumbs %}
-                                    {% if not loop.first %}<span>›</span>{% endif %}
+                                    {% if not loop.first %}<span>&rsaquo;</span>{% endif %}
                                     <a href="{{ crumb.url }}">{{ crumb.label }}</a>
                                 {% endfor %}
                             </div>
@@ -586,11 +586,11 @@
                             <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="paste">Вставить</button>
                             <button class="toolbar-button danger" form="selectionForm" type="submit" name="action" value="delete" onclick="return confirm('Удалить выбранные элементы?');">Удалить</button>
                             {% if current_relative_path %}
-                                <a class="toolbar-button" href="{{ url_for('shared_explorer', folder_slug=folder_slug, path=parent_relative_path) }}" style="text-decoration: none; display: inline-flex; align-items: center;">Назад</a>
+                                <a class="toolbar-button" href="{{ url_for('shared_explorer', folder_id=folder.id, path=parent_relative_path) }}" style="text-decoration: none; display: inline-flex; align-items: center;">Назад</a>
                             {% endif %}
                         </div>
 
-                        <form class="create-form" method="POST" action="{{ url_for('shared_action', folder_slug=folder_slug) }}">
+                        <form class="create-form" method="POST" action="{{ url_for('shared_action', folder_id=folder.id) }}">
                             <input type="hidden" name="current_path" value="{{ current_relative_path }}">
                             <input class="create-input" type="text" name="folder_name" placeholder="Новая папка" required>
                             <button class="create-button" type="submit" name="action" value="create_folder">Создать папку</button>
@@ -609,7 +609,7 @@
                 {% endwith %}
 
                 <div class="content">
-                    <form class="list-shell" id="selectionForm" method="POST" action="{{ url_for('shared_action', folder_slug=folder_slug) }}">
+                    <form class="list-shell" id="selectionForm" method="POST" action="{{ url_for('shared_action', folder_id=folder.id) }}">
                         <input type="hidden" name="current_path" value="{{ current_relative_path }}">
 
                         <div class="list-toolbar">
@@ -645,7 +645,7 @@
                                                 </td>
                                                 <td class="muted">{{ item.modified_at }}</td>
                                                 <td class="muted">{{ item.type_label }}</td>
-                                                <td class="muted">{{ item.size or '—' }}</td>
+                                                <td class="muted">{{ item.size or 'Нет' }}</td>
                                             </tr>
                                         {% endfor %}
                                     </tbody>

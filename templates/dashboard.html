@@ -244,17 +244,28 @@
             font-size: 1.4rem;
         }
 
+        .empty-folders {
+            padding: 18px 20px;
+            border-radius: var(--radius-md);
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
         .disk-card .card-inner {
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: space-between;
         }
 
         .disk-visual {
             display: grid;
             place-items: center;
-            margin: 10px 0 18px;
+            margin: auto 0;
             width: 100%;
+            flex: 1;
         }
 
         .disk-ring {
@@ -354,6 +365,13 @@
                 inset 0 6px 14px rgba(255, 255, 255, 0.35),
                 0 18px 40px rgba(0, 0, 0, 0.32);
             border: 6px solid rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .profile-name {
@@ -471,13 +489,17 @@
                     </div>
 
                     <div class="folder-list">
-                        {% for folder in shared_folders %}
-                            <a class="folder-link" href="{{ url_for('shared_explorer', folder_slug=folder.slug) }}">
-                                <span class="folder-icon"></span>
-                                <span class="folder-name">{{ folder.name }}</span>
-                                <span class="folder-arrow">›</span>
-                            </a>
-                        {% endfor %}
+                        {% if shared_folders %}
+                            {% for folder in shared_folders %}
+                                <a class="folder-link" href="{{ url_for('shared_explorer', folder_id=folder.id) }}">
+                                    <span class="folder-icon"></span>
+                                    <span class="folder-name">{{ folder.name }}</span>
+                                    <span class="folder-arrow">&rsaquo;</span>
+                                </a>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-folders">Пока нет общих папок, доступных для вашего аккаунта.</div>
+                        {% endif %}
                     </div>
                 </div>
             </article>
@@ -518,9 +540,15 @@
             <article class="card profile-card">
                 <div class="card-inner">
                     <div class="profile-head">
-                        <div class="avatar">{{ avatar_text }}</div>
+                        <div class="avatar">
+                            {% if avatar_url %}
+                                <img src="{{ avatar_url }}" alt="{{ username }}">
+                            {% else %}
+                                {{ avatar_text }}
+                            {% endif %}
+                        </div>
                         <div class="profile-name">{{ username }}</div>
-                        <div class="role-chip">Администратор</div>
+                        <div class="role-chip">{{ role_label }}</div>
                     </div>
 
                     <div class="action-group">
