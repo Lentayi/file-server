@@ -261,6 +261,13 @@
             align-items: center;
         }
 
+        .tool-forms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
         .create-input {
             min-width: 220px;
             min-height: 42px;
@@ -437,6 +444,10 @@
                 width: 100%;
             }
 
+            .tool-forms {
+                width: 100%;
+            }
+
             .create-input {
                 flex: 1;
                 min-width: 0;
@@ -549,11 +560,18 @@
                             {% endif %}
                         </div>
 
-                        <form class="create-form" method="POST" action="{{ url_for('storage_action') }}">
-                            <input type="hidden" name="current_path" value="{{ current_relative_path }}">
-                            <input class="create-input" type="text" name="folder_name" placeholder="Новая папка" required>
-                            <button class="create-button" type="submit" name="action" value="create_folder">Создать папку</button>
-                        </form>
+                        <div class="tool-forms">
+                            <div class="create-form">
+                                <input class="create-input" form="selectionForm" type="text" name="new_name" placeholder="Новое имя">
+                                <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="rename">Переименовать</button>
+                            </div>
+
+                            <form class="create-form" method="POST" action="{{ url_for('storage_action') }}">
+                                <input type="hidden" name="current_path" value="{{ current_relative_path }}">
+                                <input class="create-input" type="text" name="folder_name" placeholder="Новая папка" required>
+                                <button class="create-button" type="submit" name="action" value="create_folder">Создать папку</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
 

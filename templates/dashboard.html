@@ -17,6 +17,10 @@
             --radius-lg: 30px;
             --radius-md: 22px;
             --radius-sm: 16px;
+            --chip-bg: rgba(255, 255, 255, 0.06);
+            --chip-text: #d8ebff;
+            --secondary-bg: rgba(255, 255, 255, 0.05);
+            --secondary-border: rgba(255, 255, 255, 0.12);
         }
 
         * {
@@ -35,6 +39,27 @@
                 radial-gradient(circle at 32% 82%, rgba(116, 120, 255, 0.18), transparent 20%),
                 linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
             overflow: hidden;
+        }
+
+        body[data-theme="light"] {
+            --panel: rgba(255, 255, 255, 0.78);
+            --panel-strong: rgba(255, 255, 255, 0.92);
+            --line: rgba(24, 67, 109, 0.12);
+            --text: #132235;
+            --muted: #66788f;
+            --accent: #1f7cf0;
+            --accent-2: #18a371;
+            --shadow: 0 24px 60px rgba(37, 65, 98, 0.14);
+            --chip-bg: rgba(255, 255, 255, 0.72);
+            --chip-text: #1d3856;
+            --secondary-bg: rgba(14, 58, 101, 0.06);
+            --secondary-border: rgba(24, 67, 109, 0.12);
+            background:
+                radial-gradient(circle at 12% 18%, rgba(61, 145, 255, 0.2), transparent 24%),
+                radial-gradient(circle at 84% 14%, rgba(74, 223, 171, 0.16), transparent 18%),
+                radial-gradient(circle at 75% 74%, rgba(255, 194, 93, 0.14), transparent 22%),
+                radial-gradient(circle at 32% 82%, rgba(129, 149, 255, 0.16), transparent 20%),
+                linear-gradient(145deg, #edf5ff 0%, #dfeefb 46%, #eef5fb 100%);
         }
 
         body::before,
@@ -81,6 +106,14 @@
             margin-bottom: 18px;
         }
 
+        .hero-side {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .hero h1 {
             margin: 0;
             font-size: clamp(2.4rem, 4vw, 4.5rem);
@@ -92,10 +125,45 @@
             padding: 10px 16px;
             border: 1px solid var(--line);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--chip-bg);
             backdrop-filter: blur(16px);
-            color: #d8ebff;
+            color: var(--chip-text);
             white-space: nowrap;
+        }
+
+        .theme-switcher {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--chip-bg);
+            backdrop-filter: blur(16px);
+        }
+
+        .theme-button {
+            min-height: 38px;
+            padding: 0 14px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .theme-button.active {
+            background: linear-gradient(135deg, #76ddff, #8fffc9);
+            color: #04111b;
+            box-shadow: 0 10px 24px rgba(103, 213, 255, 0.18);
+        }
+
+        .theme-note {
+            width: 100%;
+            text-align: right;
+            color: var(--muted);
+            font-size: 0.84rem;
         }
 
         .layout {
@@ -157,8 +225,8 @@
             min-width: 116px;
             padding: 12px 14px;
             border-radius: 18px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--secondary-bg);
+            border: 1px solid var(--secondary-border);
         }
 
         .mini-stat strong {
@@ -201,8 +269,8 @@
             align-items: center;
             padding: 18px 20px;
             border-radius: var(--radius-md);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--secondary-border);
+            background: var(--secondary-bg);
             color: var(--text);
             text-decoration: none;
             transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
@@ -247,8 +315,8 @@
         .empty-folders {
             padding: 18px 20px;
             border-radius: var(--radius-md);
-            border: 1px dashed rgba(255, 255, 255, 0.18);
-            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed var(--secondary-border);
+            background: var(--secondary-bg);
             color: var(--muted);
             line-height: 1.55;
         }
@@ -319,8 +387,8 @@
         .disk-stat {
             padding: 16px;
             border-radius: var(--radius-sm);
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--secondary-bg);
+            border: 1px solid var(--secondary-border);
         }
 
         .disk-stat strong {
@@ -423,8 +491,8 @@
         }
 
         .action.secondary {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.12);
+            background: var(--secondary-bg);
+            border-color: var(--secondary-border);
         }
 
         @media (max-width: 1120px) {
@@ -446,6 +514,15 @@
                 flex-direction: column;
             }
 
+            .hero-side {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .theme-note {
+                text-align: left;
+            }
+
             .card-inner {
                 padding: 22px;
             }
@@ -465,13 +542,22 @@
         }
     </style>
 </head>
-<body>
+<body data-theme="{{ active_theme }}">
     <div class="page">
         <section class="hero">
             <div>
                 <h1>{{ greeting }}, {{ username }}!</h1>
             </div>
-            <div class="date-chip">{{ today_label }}</div>
+            <div class="hero-side">
+                <form class="theme-switcher" method="POST" action="{{ url_for('dashboard_theme') }}">
+                    <button class="theme-button {% if theme_preference == 'light' %}active{% endif %}" type="submit" name="theme" value="light">Светлая</button>
+                    <button class="theme-button {% if theme_preference == 'dark' %}active{% endif %}" type="submit" name="theme" value="dark">Темная</button>
+                </form>
+                <div class="date-chip">{{ today_label }}</div>
+                {% if theme_preference == 'auto' %}
+                    <div class="theme-note">Авто-тема из профиля активна: сейчас {{ active_theme == 'light' and 'светлая' or 'темная' }}.</div>
+                {% endif %}
+            </div>
         </section>
 
         <section class="layout">

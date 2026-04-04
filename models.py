@@ -9,6 +9,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    theme_preference = db.Column(db.String(20), default='light', nullable=False)
 
 
 class File(db.Model):

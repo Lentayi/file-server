@@ -8,6 +8,7 @@
         :root {
             --bg: #ecf2f8;
             --panel: rgba(255, 255, 255, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.9);
             --line: #dce5f0;
             --text: #162334;
             --muted: #6c7a90;
@@ -19,6 +20,10 @@
             --radius-lg: 28px;
             --radius-md: 20px;
             --radius-sm: 14px;
+            --button-bg: #ffffff;
+            --field-bg: #ffffff;
+            --badge-bg: #f4f8ff;
+            --row-bg: rgba(255, 255, 255, 0.78);
         }
 
         * { box-sizing: border-box; }
@@ -32,6 +37,28 @@
                 radial-gradient(circle at top left, rgba(47, 125, 246, 0.12), transparent 24%),
                 radial-gradient(circle at bottom right, rgba(116, 213, 255, 0.12), transparent 22%),
                 var(--bg);
+        }
+
+        body[data-theme="dark"] {
+            --bg: #081625;
+            --panel: rgba(11, 25, 40, 0.88);
+            --panel-border: rgba(174, 218, 255, 0.08);
+            --line: rgba(174, 218, 255, 0.12);
+            --text: #eef6ff;
+            --muted: #94a8bf;
+            --blue: #78c7ff;
+            --blue-soft: rgba(103, 213, 255, 0.12);
+            --green: #68d7a6;
+            --danger: #ff8d97;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+            --button-bg: rgba(255, 255, 255, 0.05);
+            --field-bg: rgba(255, 255, 255, 0.06);
+            --badge-bg: rgba(255, 255, 255, 0.06);
+            --row-bg: rgba(255, 255, 255, 0.05);
+            background:
+                radial-gradient(circle at top left, rgba(47, 125, 246, 0.2), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(116, 213, 255, 0.14), transparent 22%),
+                linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
         }
 
         .page {
@@ -74,7 +101,7 @@
             padding: 0 16px;
             border-radius: 14px;
             border: 1px solid var(--line);
-            background: #fff;
+            background: var(--button-bg);
             color: var(--text);
             text-decoration: none;
             font-weight: 600;
@@ -125,7 +152,7 @@
 
         .card {
             background: var(--panel);
-            border: 1px solid rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--panel-border);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow);
             backdrop-filter: blur(14px);
@@ -209,7 +236,7 @@
         .badge {
             padding: 8px 12px;
             border-radius: 999px;
-            background: #f4f8ff;
+            background: var(--badge-bg);
             border: 1px solid var(--line);
             color: var(--text);
             font-size: 0.9rem;
@@ -229,7 +256,7 @@
             padding: 0 14px;
             border-radius: var(--radius-sm);
             border: 1px solid var(--line);
-            background: #fff;
+            background: var(--field-bg);
             color: var(--text);
         }
 
@@ -249,7 +276,37 @@
             padding: 16px;
             border-radius: var(--radius-md);
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.78);
+            background: var(--row-bg);
+            scroll-margin-top: 28px;
+            transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .theme-options {
+            display: grid;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .theme-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 48px;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--line);
+            background: var(--row-bg);
+        }
+
+        .theme-option input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .user-card.focused {
+            border-color: rgba(47, 125, 246, 0.45);
+            box-shadow: 0 16px 34px rgba(47, 125, 246, 0.16);
+            transform: translateY(-2px);
         }
 
         .folder-row form,
@@ -314,7 +371,7 @@
         }
     </style>
 </head>
-<body>
+<body data-theme="{{ active_theme }}">
     <div class="page">
         <div class="hero">
             <div>
@@ -382,6 +439,31 @@
                             <input type="password" name="new_password" placeholder="Новый пароль" required>
                             <input type="password" name="confirm_password" placeholder="Подтвердите новый пароль" required>
                             <button class="submit-button primary" type="submit">Обновить пароль</button>
+                        </form>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Оформление</div>
+                        <h2>Тема интерфейса</h2>
+                        <p>Можно выбрать светлую, темную или автоматическую смену темы по времени суток.</p>
+                        <form class="form-grid" method="POST" action="{{ url_for('update_theme') }}">
+                            <div class="theme-options">
+                                <label class="theme-option">
+                                    <input type="radio" name="theme_preference" value="light" {% if theme_preference == 'light' %}checked{% endif %}>
+                                    <span>Светлая тема</span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme_preference" value="dark" {% if theme_preference == 'dark' %}checked{% endif %}>
+                                    <span>Темная тема</span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme_preference" value="auto" {% if theme_preference == 'auto' %}checked{% endif %}>
+                                    <span>Авто: утром и днем светлая, вечером и ночью темная</span>
+                                </label>
+                            </div>
+                            <button class="submit-button primary" type="submit">Сохранить тему</button>
                         </form>
                     </div>
                 </article>
@@ -483,7 +565,7 @@
                         <h2>Управление пользователями</h2>
                         <div class="user-list">
                             {% for user in all_users %}
-                                <div class="user-card">
+                                <div class="user-card" id="user-{{ user.id }}">
                                     <div class="mini-title">{{ user.username }}</div>
                                     <form method="POST" action="{{ url_for('admin_update_user', user_id=user.id) }}">
                                         <div class="checkbox-grid">
@@ -521,5 +603,23 @@
             </section>
         {% endif %}
     </div>
+
+    <script>
+        const focusUserId = new URLSearchParams(window.location.search).get("focus_user");
+        if (focusUserId) {
+            const targetCard = document.getElementById(`user-${focusUserId}`);
+            if (targetCard) {
+                requestAnimationFrame(() => {
+                    targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
+                    targetCard.classList.add("focused");
+                    setTimeout(() => targetCard.classList.remove("focused"), 2200);
+                });
+
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete("focus_user");
+                window.history.replaceState({}, "", cleanUrl);
+            }
+        }
+    </script>
 </body>
 </html>

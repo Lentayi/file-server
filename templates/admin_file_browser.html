@@ -16,6 +16,8 @@
             --muted: #69798f;
             --blue: #2f7df6;
             --blue-soft: #e8f1ff;
+            --danger: #d44f57;
+            --success: #23825d;
             --shadow: 0 24px 60px rgba(35, 53, 79, 0.18);
         }
 
@@ -200,6 +202,38 @@
             justify-content: center;
         }
 
+        .toolbar-button.danger {
+            color: var(--danger);
+        }
+
+        .create-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .create-input {
+            min-width: 220px;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        .create-input:focus {
+            border-color: #a8c5ff;
+            box-shadow: 0 0 0 4px rgba(47, 125, 246, 0.1);
+        }
+
+        .tool-forms {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .path-indicator {
             color: var(--muted);
             font-size: 0.92rem;
@@ -211,6 +245,31 @@
             padding: 16px 22px 22px;
             display: flex;
             flex-direction: column;
+        }
+
+        .flash-stack {
+            display: grid;
+            gap: 10px;
+            padding: 14px 22px 0;
+        }
+
+        .flash {
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #f8fbff;
+        }
+
+        .flash.success {
+            color: var(--success);
+            border-color: rgba(35, 130, 93, 0.18);
+            background: rgba(35, 130, 93, 0.08);
+        }
+
+        .flash.error {
+            color: var(--danger);
+            border-color: rgba(212, 79, 87, 0.18);
+            background: rgba(212, 79, 87, 0.08);
         }
 
         .list-shell {
@@ -336,6 +395,16 @@
                 border-right: 0;
                 border-bottom: 1px solid var(--line);
             }
+
+            .tool-forms,
+            .create-form {
+                width: 100%;
+            }
+
+            .create-input {
+                flex: 1;
+                min-width: 0;
+            }
         }
 
         @media (max-width: 860px) {
@@ -427,20 +496,37 @@
 
                     <div class="toolbar-row">
                         <div class="toolbar-actions">
+                            <button class="toolbar-button" form="selectionForm" type="submit" name="action" value="rename">Переименовать</button>
+                            <button class="toolbar-button danger" form="selectionForm" type="submit" name="action" value="delete" onclick="return confirm('Удалить выбранные элементы?');">Удалить</button>
                             {% if current_relative_path %}
                                 <a class="toolbar-button" href="{{ url_for('admin_file_browser', path=parent_relative_path) }}">Назад</a>
                             {% endif %}
                             <a class="toolbar-button" href="{{ url_for('admin_file_browser') }}">В корень</a>
                         </div>
-                        <div class="path-indicator">Файлы открываются на скачивание, папки открываются как разделы.</div>
+                        <div class="tool-forms">
+                            <div class="create-form">
+                                <input class="create-input" form="selectionForm" type="text" name="new_name" placeholder="Новое имя">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="flash {{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
                 <div class="content">
-                    <div class="list-shell">
+                    <form class="list-shell" id="selectionForm" method="POST" action="{{ url_for('admin_file_action') }}">
+                        <input type="hidden" name="current_path" value="{{ current_relative_path }}">
                         <div class="list-toolbar">
                             <div>Элементы: {{ items|length }}</div>
-                            <div>Режим: только просмотр</div>
+                            <div id="selectionCounter">Выбрано: 0</div>
                         </div>
 
                         <div class="list-scroll">
@@ -448,6 +534,9 @@
                                 <table>
                                     <thead>
                                         <tr>
+                                            <th style="width: 48px;">
+                                                <input type="checkbox" id="selectAll">
+                                            </th>
                                             <th>Имя</th>
                                             <th>Дата изменения</th>
                                             <th>Тип</th>
@@ -457,6 +546,9 @@
                                     <tbody>
                                         {% for item in items %}
                                             <tr>
+                                                <td>
+                                                    <input class="entry-checkbox" type="checkbox" name="selected_paths" value="{{ item.relative_path }}">
+                                                </td>
                                                 <td>
                                                     <div class="name-cell">
                                                         <span class="entry-icon {{ 'folder' if item.is_dir else 'file' }}"></span>
@@ -474,10 +566,39 @@
                                 <div class="empty">В этой папке пока ничего нет.</div>
                             {% endif %}
                         </div>
-                    </div>
+                    </form>
                 </div>
             </main>
         </div>
     </div>
+
+    <script>
+        const selectAll = document.getElementById("selectAll");
+        const checkboxes = Array.from(document.querySelectorAll(".entry-checkbox"));
+        const selectionCounter = document.getElementById("selectionCounter");
+
+        function updateSelectionCounter() {
+            const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
+            if (selectionCounter) {
+                selectionCounter.textContent = `Выбрано: ${selected}`;
+            }
+            if (selectAll) {
+                selectAll.checked = selected > 0 && selected === checkboxes.length;
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener("change", () => {
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateSelectionCounter();
+            });
+        }
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", updateSelectionCounter);
+        });
+    </script>
 </body>
 </html>

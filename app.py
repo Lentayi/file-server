@@ -22,6 +22,7 @@ from flask_login import (
     login_user,
     logout_user,
 )
+from sqlalchemy import inspect
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import File, SharedFolder, SharedFolderAccess, User, UserPermission, db
@@ -38,10 +39,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 DEFAULT_SHARED_FOLDERS = [
-    {"name": "Музыка", "slug": "music"},
-    {"name": "Видео", "slug": "video"},
-    {"name": "Фото", "slug": "photo"},
-    {"name": "Документы", "slug": "documents"},
+    {"name": "РњСѓР·С‹РєР°", "slug": "music"},
+    {"name": "Р’РёРґРµРѕ", "slug": "video"},
+    {"name": "Р¤РѕС‚Рѕ", "slug": "photo"},
+    {"name": "Р”РѕРєСѓРјРµРЅС‚С‹", "slug": "documents"},
 ]
 INVALID_PATH_CHARS = '<>:"/\\|?*'
 WINDOWS_RESERVED_NAMES = {
@@ -69,10 +70,13 @@ WINDOWS_RESERVED_NAMES = {
     "LPT9",
 }
 ALLOWED_AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+ALLOWED_THEME_PREFERENCES = {"light", "dark", "auto"}
+RUNTIME_SCHEMA_READY = False
 
 
 @login_manager.user_loader
 def load_user(user_id):
+    ensure_runtime_schema()
     return User.query.get(int(user_id))
 
 
@@ -92,6 +96,42 @@ def get_avatar_root():
     avatar_root = get_upload_root() / "avatars"
     avatar_root.mkdir(parents=True, exist_ok=True)
     return avatar_root
+
+
+def ensure_runtime_schema():
+    global RUNTIME_SCHEMA_READY
+    if RUNTIME_SCHEMA_READY:
+        return
+
+    inspector = inspect(db.engine)
+    if "user" not in inspector.get_table_names():
+        return
+
+    user_columns = {column["name"] for column in inspector.get_columns("user")}
+    if "theme_preference" not in user_columns:
+        with db.engine.begin() as connection:
+            connection.exec_driver_sql(
+                "ALTER TABLE user ADD COLUMN theme_preference VARCHAR(20) NOT NULL DEFAULT 'light'"
+            )
+
+    RUNTIME_SCHEMA_READY = True
+
+
+def normalize_theme_preference(raw_value):
+    return raw_value if raw_value in ALLOWED_THEME_PREFERENCES else "light"
+
+
+def get_theme_preference(user):
+    return normalize_theme_preference(getattr(user, "theme_preference", "light"))
+
+
+def resolve_active_theme(user, hour=None):
+    preference = get_theme_preference(user)
+    if preference != "auto":
+        return preference
+
+    current_hour = datetime.now().hour if hour is None else hour
+    return "light" if 6 <= current_hour < 18 else "dark"
 
 
 def ensure_default_shared_folders():
@@ -131,7 +171,7 @@ def can_edit_shared_folders(user):
 
 
 def get_role_label(user):
-    return "Администратор" if user.is_admin else "Пользователь"
+    return "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ" if user.is_admin else "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ"
 
 
 def sanitize_relative_path(raw_path):
@@ -190,9 +230,9 @@ def build_user_badges(user):
     permission = get_user_permission_record(user)
     badges = [get_role_label(user)]
     if permission.can_create_shared_folders:
-        badges.append("Создание общих папок")
+        badges.append("РЎРѕР·РґР°РЅРёРµ РѕР±С‰РёС… РїР°РїРѕРє")
     if permission.can_edit_shared_folders:
-        badges.append("Изменение общих папок")
+        badges.append("РР·РјРµРЅРµРЅРёРµ РѕР±С‰РёС… РїР°РїРѕРє")
     return badges
 
 
@@ -264,12 +304,12 @@ def create_available_path(destination_dir, desired_name):
 
 
 def format_size(size_bytes):
-    units = ["Б", "КБ", "МБ", "ГБ", "ТБ"]
+    units = ["Р‘", "РљР‘", "РњР‘", "Р“Р‘", "РўР‘"]
     size = float(size_bytes)
 
     for unit in units:
         if size < 1024 or unit == units[-1]:
-            if unit == "Б":
+            if unit == "Р‘":
                 return f"{int(size)} {unit}"
             return f"{size:.1f} {unit}"
         size /= 1024
@@ -277,30 +317,30 @@ def format_size(size_bytes):
 
 def describe_file_type(path_obj):
     if path_obj.is_dir():
-        return "Папка"
+        return "РџР°РїРєР°"
 
     extension = path_obj.suffix.lower()
     mapping = {
-        ".mp3": "Аудиофайл",
-        ".wav": "Аудиофайл",
-        ".flac": "Аудиофайл",
-        ".mp4": "Видео",
-        ".mkv": "Видео",
-        ".avi": "Видео",
-        ".jpg": "Изображение",
-        ".jpeg": "Изображение",
-        ".png": "Изображение",
-        ".gif": "Изображение",
+        ".mp3": "РђСѓРґРёРѕС„Р°Р№Р»",
+        ".wav": "РђСѓРґРёРѕС„Р°Р№Р»",
+        ".flac": "РђСѓРґРёРѕС„Р°Р№Р»",
+        ".mp4": "Р’РёРґРµРѕ",
+        ".mkv": "Р’РёРґРµРѕ",
+        ".avi": "Р’РёРґРµРѕ",
+        ".jpg": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
+        ".jpeg": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
+        ".png": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
+        ".gif": "РР·РѕР±СЂР°Р¶РµРЅРёРµ",
         ".pdf": "PDF",
-        ".doc": "Документ Word",
-        ".docx": "Документ Word",
-        ".xls": "Таблица Excel",
-        ".xlsx": "Таблица Excel",
-        ".txt": "Текстовый файл",
-        ".zip": "Архив",
-        ".rar": "Архив",
+        ".doc": "Р”РѕРєСѓРјРµРЅС‚ Word",
+        ".docx": "Р”РѕРєСѓРјРµРЅС‚ Word",
+        ".xls": "РўР°Р±Р»РёС†Р° Excel",
+        ".xlsx": "РўР°Р±Р»РёС†Р° Excel",
+        ".txt": "РўРµРєСЃС‚РѕРІС‹Р№ С„Р°Р№Р»",
+        ".zip": "РђСЂС…РёРІ",
+        ".rar": "РђСЂС…РёРІ",
     }
-    return mapping.get(extension, "Файл")
+    return mapping.get(extension, "Р¤Р°Р№Р»")
 
 
 def build_shared_items(folder, current_relative_path):
@@ -427,7 +467,7 @@ def build_personal_items(user, current_relative_path):
 
 
 def build_personal_breadcrumbs(current_relative_path):
-    breadcrumbs = [{"label": "Личное хранилище", "url": url_for("storage")}]
+    breadcrumbs = [{"label": "Р›РёС‡РЅРѕРµ С…СЂР°РЅРёР»РёС‰Рµ", "url": url_for("storage")}]
     current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
 
     for index, part in enumerate(current_parts):
@@ -475,7 +515,7 @@ def build_admin_items(current_relative_path):
 
 
 def build_admin_breadcrumbs(current_relative_path):
-    breadcrumbs = [{"label": "Все файлы", "url": url_for("admin_file_browser")}]
+    breadcrumbs = [{"label": "Р’СЃРµ С„Р°Р№Р»С‹", "url": url_for("admin_file_browser")}]
     current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
 
     for index, part in enumerate(current_parts):
@@ -484,6 +524,18 @@ def build_admin_breadcrumbs(current_relative_path):
 
     return breadcrumbs
 
+
+def rename_entry(target_path, raw_name):
+    new_name = sanitize_entry_name(raw_name)
+    if not new_name:
+        return None, "Укажите корректное новое имя."
+    destination_path = target_path.with_name(new_name)
+    if destination_path == target_path:
+        return target_path, None
+    if destination_path.exists():
+        return None, "Элемент с таким именем уже существует."
+    target_path.rename(destination_path)
+    return destination_path, None
 
 def create_shared_folder(name, grant_user=None):
     safe_name = sanitize_entry_name(name)
@@ -510,14 +562,18 @@ def update_user_folder_access(user, selected_folder_ids):
 
 
 def build_profile_context():
+    ensure_runtime_schema()
     ensure_user_permission_record(current_user)
     all_users = User.query.order_by(User.username.asc()).all()
+    theme_preference = get_theme_preference(current_user)
 
     return {
         "username": current_user.username,
         "role_label": get_role_label(current_user),
         "avatar_url": get_avatar_url(current_user),
         "avatar_text": (current_user.username[:2] or "U").upper(),
+        "theme_preference": theme_preference,
+        "active_theme": resolve_active_theme(current_user),
         "rights_badges": build_user_badges(current_user),
         "accessible_shared_folders": get_accessible_shared_folders(current_user),
         "can_create_shared_folders": can_create_shared_folders(current_user),
@@ -567,8 +623,16 @@ def redirect_to_personal(current_relative_path=""):
     return redirect(url_for("storage"))
 
 
+def redirect_to_admin_files(current_relative_path=""):
+    safe_relative_path = sanitize_relative_path(current_relative_path)
+    if safe_relative_path:
+        return redirect(url_for("admin_file_browser", path=safe_relative_path))
+    return redirect(url_for("admin_file_browser"))
+
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    ensure_runtime_schema()
     if current_user.is_authenticated:
         return redirect('/dashboard')
 
@@ -579,7 +643,7 @@ def login():
         if user and check_password_hash(user.password, request.form['password']):
             login_user(user)
             return redirect('/dashboard')
-        error = "Неверный логин или пароль"
+        error = "РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ"
 
     return render_template('login.html', error=error)
 
@@ -587,16 +651,18 @@ def login():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    ensure_runtime_schema()
     hour = datetime.now().hour
+    theme_preference = get_theme_preference(current_user)
 
     if 6 <= hour < 12:
-        greeting = "Доброе утро"
+        greeting = "Р”РѕР±СЂРѕРµ СѓС‚СЂРѕ"
     elif 12 <= hour < 18:
-        greeting = "Добрый день"
+        greeting = "Р”РѕР±СЂС‹Р№ РґРµРЅСЊ"
     elif 18 <= hour < 24:
-        greeting = "Добрый вечер"
+        greeting = "Р”РѕР±СЂС‹Р№ РІРµС‡РµСЂ"
     else:
-        greeting = "Доброй ночи"
+        greeting = "Р”РѕР±СЂРѕР№ РЅРѕС‡Рё"
 
     ensure_default_shared_folders()
     sync_legacy_personal_files(current_user)
@@ -616,6 +682,8 @@ def dashboard():
         avatar_text=(current_user.username[:2] or "U").upper(),
         avatar_url=get_avatar_url(current_user),
         role_label=get_role_label(current_user),
+        theme_preference=theme_preference,
+        active_theme=resolve_active_theme(current_user, hour=hour),
     )
 
 
@@ -658,7 +726,7 @@ def shared_upload(folder_id):
 
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
-        flash("Сначала выберите файлы на компьютере.", "error")
+        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ С„Р°Р№Р»С‹ РЅР° РєРѕРјРїСЊСЋС‚РµСЂРµ.", "error")
         return redirect_to_shared(folder, current_relative_path)
 
     saved_count = 0
@@ -672,7 +740,7 @@ def shared_upload(folder_id):
         uploaded_file.save(destination_path)
         saved_count += 1
 
-    flash(f"Загружено файлов: {saved_count}." if saved_count else "Не удалось сохранить выбранные файлы.", "success" if saved_count else "error")
+    flash(f"Р—Р°РіСЂСѓР¶РµРЅРѕ С„Р°Р№Р»РѕРІ: {saved_count}." if saved_count else "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Рµ С„Р°Р№Р»С‹.", "success" if saved_count else "error")
     return redirect_to_shared(folder, current_relative_path)
 
 
@@ -685,72 +753,72 @@ def shared_action(folder_id):
     _, current_directory, current_relative_path = resolve_shared_path(folder, current_relative_path)
     if not current_directory.is_dir():
         abort(404)
-
     selected_relative_paths = []
     for relative_path in request.form.getlist("selected_paths"):
         safe_relative_path = sanitize_relative_path(relative_path)
         if safe_relative_path:
             selected_relative_paths.append(safe_relative_path)
-
     if action == "create_folder":
         folder_name = sanitize_entry_name(request.form.get("folder_name", ""))
         if not folder_name:
             flash("Укажите корректное имя папки.", "error")
             return redirect_to_shared(folder, current_relative_path)
-
         create_available_path(current_directory, folder_name).mkdir(parents=False, exist_ok=False)
         flash("Папка создана.", "success")
         return redirect_to_shared(folder, current_relative_path)
-
     if action in {"copy", "cut"}:
         if not selected_relative_paths:
             flash("Выберите хотя бы один файл или папку.", "error")
             return redirect_to_shared(folder, current_relative_path)
-
         session["shared_clipboard"] = {
             "mode": action,
             "items": [{"folder_id": folder.id, "relative_path": path} for path in selected_relative_paths],
         }
         flash("Элементы добавлены в буфер обмена.", "success")
         return redirect_to_shared(folder, current_relative_path)
-
     if action == "paste":
         clipboard = get_clipboard("shared_clipboard")
         if not clipboard:
             flash("Буфер обмена пуст.", "error")
             return redirect_to_shared(folder, current_relative_path)
-
         transferred_count = 0
         for item in clipboard["items"]:
             source_folder = get_folder_by_id(item["folder_id"])
             _, source_path, _ = resolve_shared_path(source_folder, item["relative_path"])
             if not source_path.exists():
                 continue
-
             if source_path.is_dir() and (current_directory == source_path or source_path in current_directory.parents):
                 continue
-
             if clipboard["mode"] == "cut" and source_path.parent == current_directory:
                 continue
-
             destination_path = create_available_path(current_directory, source_path.name)
             if clipboard["mode"] == "copy":
                 copy_entry(source_path, destination_path)
             else:
                 shutil.move(str(source_path), str(destination_path))
             transferred_count += 1
-
         if clipboard["mode"] == "cut":
             session.pop("shared_clipboard", None)
-
         flash("Буфер обмена вставлен." if transferred_count else "Не удалось вставить выбранные элементы.", "success" if transferred_count else "error")
         return redirect_to_shared(folder, current_relative_path)
-
+    if action == "rename":
+        if len(selected_relative_paths) != 1:
+            flash("Для переименования выберите один файл или одну папку.", "error")
+            return redirect_to_shared(folder, current_relative_path)
+        _, target_path, _ = resolve_shared_path(folder, selected_relative_paths[0])
+        if not target_path.exists():
+            flash("Выбранный элемент не найден.", "error")
+            return redirect_to_shared(folder, current_relative_path)
+        renamed_path, error_message = rename_entry(target_path, request.form.get("new_name", ""))
+        if error_message:
+            flash(error_message, "error")
+            return redirect_to_shared(folder, current_relative_path)
+        flash(f"Элемент переименован в «{renamed_path.name}».", "success")
+        return redirect_to_shared(folder, current_relative_path)
     if action == "delete":
         if not selected_relative_paths:
             flash("Сначала отметьте элементы для удаления.", "error")
             return redirect_to_shared(folder, current_relative_path)
-
         deleted_count = 0
         for relative_path in selected_relative_paths:
             _, target_path, _ = resolve_shared_path(folder, relative_path)
@@ -761,14 +829,10 @@ def shared_action(folder_id):
             else:
                 target_path.unlink()
             deleted_count += 1
-
         flash(f"Удалено элементов: {deleted_count}.", "success")
         return redirect_to_shared(folder, current_relative_path)
-
     flash("Неизвестное действие.", "error")
     return redirect_to_shared(folder, current_relative_path)
-
-
 @app.route('/shared/<int:folder_id>/download')
 @login_required
 def shared_download(folder_id):
@@ -801,6 +865,7 @@ def upload():
 @app.route('/profile')
 @login_required
 def profile():
+    ensure_runtime_schema()
     ensure_default_shared_folders()
     ensure_user_permission_record(current_user)
     sync_legacy_personal_files(current_user)
@@ -815,18 +880,18 @@ def update_password():
     confirm_password = request.form.get("confirm_password", "")
 
     if not check_password_hash(current_user.password, current_password):
-        flash("Текущий пароль введен неверно.", "error")
+        flash("РўРµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ РІРІРµРґРµРЅ РЅРµРІРµСЂРЅРѕ.", "error")
         return redirect(url_for("profile"))
     if len(new_password) < 4:
-        flash("Новый пароль должен содержать минимум 4 символа.", "error")
+        flash("РќРѕРІС‹Р№ РїР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РјРёРЅРёРјСѓРј 4 СЃРёРјРІРѕР»Р°.", "error")
         return redirect(url_for("profile"))
     if new_password != confirm_password:
-        flash("Подтверждение пароля не совпадает.", "error")
+        flash("РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РїР°СЂРѕР»СЏ РЅРµ СЃРѕРІРїР°РґР°РµС‚.", "error")
         return redirect(url_for("profile"))
 
     current_user.password = generate_password_hash(new_password)
     db.session.commit()
-    flash("Пароль обновлен.", "success")
+    flash("РџР°СЂРѕР»СЊ РѕР±РЅРѕРІР»РµРЅ.", "success")
     return redirect(url_for("profile"))
 
 
@@ -835,14 +900,39 @@ def update_password():
 def update_avatar():
     uploaded_file = request.files.get("avatar")
     if not uploaded_file or not uploaded_file.filename:
-        flash("Сначала выберите изображение.", "error")
+        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ.", "error")
         return redirect(url_for("profile"))
 
     if not save_avatar(current_user, uploaded_file):
-        flash("Разрешены только PNG, JPG, JPEG, GIF или WEBP.", "error")
+        flash("Р Р°Р·СЂРµС€РµРЅС‹ С‚РѕР»СЊРєРѕ PNG, JPG, JPEG, GIF РёР»Рё WEBP.", "error")
         return redirect(url_for("profile"))
 
-    flash("Аватар обновлен.", "success")
+    flash("РђРІР°С‚Р°СЂ РѕР±РЅРѕРІР»РµРЅ.", "success")
+    return redirect(url_for("profile"))
+
+
+@app.route('/dashboard/theme', methods=['POST'])
+@login_required
+def dashboard_theme():
+    ensure_runtime_schema()
+    selected_theme = normalize_theme_preference(request.form.get("theme", "light"))
+    if selected_theme not in {"light", "dark"}:
+        selected_theme = "light"
+
+    current_user.theme_preference = selected_theme
+    db.session.commit()
+    return redirect(url_for("dashboard"))
+
+
+@app.route('/profile/theme', methods=['POST'])
+@login_required
+def update_theme():
+    ensure_runtime_schema()
+    current_user.theme_preference = normalize_theme_preference(
+        request.form.get("theme_preference", "light")
+    )
+    db.session.commit()
+    flash("Настройки темы обновлены.", "success")
     return redirect(url_for("profile"))
 
 
@@ -853,9 +943,9 @@ def create_shared_folder_route():
     folder = create_shared_folder(request.form.get("name", ""), grant_user=current_user)
 
     if not folder:
-        flash("Укажите корректное имя общей папки.", "error")
+        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅРѕРµ РёРјСЏ РѕР±С‰РµР№ РїР°РїРєРё.", "error")
     else:
-        flash(f"Общая папка «{folder.name}» создана.", "success")
+        flash(f"РћР±С‰Р°СЏ РїР°РїРєР° В«{folder.name}В» СЃРѕР·РґР°РЅР°.", "success")
     return redirect(url_for("profile"))
 
 
@@ -867,12 +957,12 @@ def rename_shared_folder_route(folder_id):
     new_name = sanitize_entry_name(request.form.get("name", ""))
 
     if not new_name:
-        flash("Укажите корректное новое имя папки.", "error")
+        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅРѕРµ РЅРѕРІРѕРµ РёРјСЏ РїР°РїРєРё.", "error")
         return redirect(url_for("profile"))
 
     folder.name = new_name
     db.session.commit()
-    flash("Название общей папки обновлено.", "success")
+    flash("РќР°Р·РІР°РЅРёРµ РѕР±С‰РµР№ РїР°РїРєРё РѕР±РЅРѕРІР»РµРЅРѕ.", "success")
     return redirect(url_for("profile"))
 
 
@@ -886,21 +976,21 @@ def admin_create_user():
     is_admin = request.form.get("is_admin") == "on"
 
     if not username:
-        flash("Укажите корректный логин нового пользователя.", "error")
+        flash("РЈРєР°Р¶РёС‚Рµ РєРѕСЂСЂРµРєС‚РЅС‹Р№ Р»РѕРіРёРЅ РЅРѕРІРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.", "error")
         return redirect(url_for("profile"))
     if len(password) < 4:
-        flash("Пароль нового пользователя должен содержать минимум 4 символа.", "error")
+        flash("РџР°СЂРѕР»СЊ РЅРѕРІРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РјРёРЅРёРјСѓРј 4 СЃРёРјРІРѕР»Р°.", "error")
         return redirect(url_for("profile"))
     if User.query.filter_by(username=username).first():
-        flash("Пользователь с таким логином уже существует.", "error")
+        flash("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј Р»РѕРіРёРЅРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.", "error")
         return redirect(url_for("profile"))
 
     user = User(username=username, password=generate_password_hash(password), is_admin=is_admin)
     db.session.add(user)
     db.session.commit()
     ensure_user_permission_record(user)
-    flash(f"Пользователь «{username}» создан.", "success")
-    return redirect(url_for("profile"))
+    flash(f"РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ В«{username}В» СЃРѕР·РґР°РЅ.", "success")
+    return redirect(url_for("profile", focus_user=user.id))
 
 
 @app.route('/admin/users/<int:user_id>/update', methods=['POST'])
@@ -912,8 +1002,8 @@ def admin_update_user(user_id):
     new_is_admin = request.form.get("is_admin") == "on"
 
     if user.id == current_user.id and not new_is_admin and User.query.filter_by(is_admin=True).count() <= 1:
-        flash("Нельзя снять права у последнего администратора.", "error")
-        return redirect(url_for("profile"))
+        flash("РќРµР»СЊР·СЏ СЃРЅСЏС‚СЊ РїСЂР°РІР° Сѓ РїРѕСЃР»РµРґРЅРµРіРѕ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°.", "error")
+        return redirect(url_for("profile", focus_user=user.id))
 
     user.is_admin = new_is_admin
     permission.can_create_shared_folders = request.form.get("can_create_shared_folders") == "on"
@@ -928,8 +1018,8 @@ def admin_update_user(user_id):
 
     db.session.add(permission)
     db.session.commit()
-    flash(f"Права пользователя «{user.username}» обновлены.", "success")
-    return redirect(url_for("profile"))
+    flash(f"РџСЂР°РІР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ В«{user.username}В» РѕР±РЅРѕРІР»РµРЅС‹.", "success")
+    return redirect(url_for("profile", focus_user=user.id))
 
 
 @app.route('/avatar/<int:user_id>')
@@ -989,7 +1079,7 @@ def storage_upload():
 
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
-        flash("Сначала выберите файлы на компьютере.", "error")
+        flash("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ С„Р°Р№Р»С‹ РЅР° РєРѕРјРїСЊСЋС‚РµСЂРµ.", "error")
         return redirect_to_personal(current_relative_path)
 
     saved_count = 0
@@ -1003,9 +1093,9 @@ def storage_upload():
         saved_count += 1
 
     if saved_count:
-        flash(f"Загружено файлов: {saved_count}.", "success")
+        flash(f"Р—Р°РіСЂСѓР¶РµРЅРѕ С„Р°Р№Р»РѕРІ: {saved_count}.", "success")
     else:
-        flash("Не удалось сохранить выбранные файлы.", "error")
+        flash("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Рµ С„Р°Р№Р»С‹.", "error")
 
     return redirect_to_personal(current_relative_path)
 
@@ -1019,68 +1109,68 @@ def storage_action():
     _, current_directory, current_relative_path = resolve_personal_path(current_user, current_relative_path)
     if not current_directory.is_dir():
         abort(404)
-
     selected_relative_paths = []
     for relative_path in request.form.getlist("selected_paths"):
         safe_relative_path = sanitize_relative_path(relative_path)
         if safe_relative_path:
             selected_relative_paths.append(safe_relative_path)
-
     if action == "create_folder":
         folder_name = sanitize_entry_name(request.form.get("folder_name", ""))
         if not folder_name:
             flash("Укажите корректное имя папки.", "error")
             return redirect_to_personal(current_relative_path)
-
         create_available_path(current_directory, folder_name).mkdir(parents=False, exist_ok=False)
         flash("Папка создана.", "success")
         return redirect_to_personal(current_relative_path)
-
     if action in {"copy", "cut"}:
         if not selected_relative_paths:
             flash("Выберите хотя бы один файл или папку.", "error")
             return redirect_to_personal(current_relative_path)
-
         session["personal_clipboard"] = {"mode": action, "items": selected_relative_paths}
         flash("Элементы добавлены в буфер обмена.", "success")
         return redirect_to_personal(current_relative_path)
-
     if action == "paste":
         clipboard = get_clipboard("personal_clipboard")
         if not clipboard:
             flash("Буфер обмена пуст.", "error")
             return redirect_to_personal(current_relative_path)
-
         transferred_count = 0
         for relative_path in clipboard["items"]:
             _, source_path, _ = resolve_personal_path(current_user, relative_path)
             if not source_path.exists():
                 continue
-
             if source_path.is_dir() and (current_directory == source_path or source_path in current_directory.parents):
                 continue
-
             if clipboard["mode"] == "cut" and source_path.parent == current_directory:
                 continue
-
             destination_path = create_available_path(current_directory, source_path.name)
             if clipboard["mode"] == "copy":
                 copy_entry(source_path, destination_path)
             else:
                 shutil.move(str(source_path), str(destination_path))
             transferred_count += 1
-
         if clipboard["mode"] == "cut":
             session.pop("personal_clipboard", None)
-
         flash("Буфер обмена вставлен." if transferred_count else "Не удалось вставить выбранные элементы.", "success" if transferred_count else "error")
         return redirect_to_personal(current_relative_path)
-
+    if action == "rename":
+        if len(selected_relative_paths) != 1:
+            flash("Для переименования выберите один файл или одну папку.", "error")
+            return redirect_to_personal(current_relative_path)
+        _, target_path, _ = resolve_personal_path(current_user, selected_relative_paths[0])
+        if not target_path.exists():
+            flash("Выбранный элемент не найден.", "error")
+            return redirect_to_personal(current_relative_path)
+        renamed_path, error_message = rename_entry(target_path, request.form.get("new_name", ""))
+        if error_message:
+            flash(error_message, "error")
+            return redirect_to_personal(current_relative_path)
+        flash(f"Элемент переименован в «{renamed_path.name}».", "success")
+        return redirect_to_personal(current_relative_path)
     if action == "delete":
         if not selected_relative_paths:
             flash("Сначала отметьте элементы для удаления.", "error")
             return redirect_to_personal(current_relative_path)
-
         deleted_count = 0
         for relative_path in selected_relative_paths:
             _, target_path, _ = resolve_personal_path(current_user, relative_path)
@@ -1091,14 +1181,10 @@ def storage_action():
             else:
                 target_path.unlink()
             deleted_count += 1
-
         flash(f"Удалено элементов: {deleted_count}.", "success")
         return redirect_to_personal(current_relative_path)
-
     flash("Неизвестное действие.", "error")
     return redirect_to_personal(current_relative_path)
-
-
 @app.route('/storage/download')
 @login_required
 def storage_download():
@@ -1130,6 +1216,52 @@ def admin_file_browser():
     )
 
 
+@app.route('/admin/files/action', methods=['POST'])
+@login_required
+def admin_file_action():
+    require_admin()
+    action = request.form.get("action", "")
+    current_relative_path = request.form.get("current_path", "")
+    _, current_directory, current_relative_path = resolve_admin_path(current_relative_path)
+    if not current_directory.is_dir():
+        abort(404)
+    selected_relative_paths = []
+    for relative_path in request.form.getlist("selected_paths"):
+        safe_relative_path = sanitize_relative_path(relative_path)
+        if safe_relative_path:
+            selected_relative_paths.append(safe_relative_path)
+    if action == "rename":
+        if len(selected_relative_paths) != 1:
+            flash("Для переименования выберите один файл или одну папку.", "error")
+            return redirect_to_admin_files(current_relative_path)
+        _, target_path, _ = resolve_admin_path(selected_relative_paths[0])
+        if not target_path.exists():
+            flash("Выбранный элемент не найден.", "error")
+            return redirect_to_admin_files(current_relative_path)
+        renamed_path, error_message = rename_entry(target_path, request.form.get("new_name", ""))
+        if error_message:
+            flash(error_message, "error")
+            return redirect_to_admin_files(current_relative_path)
+        flash(f"Элемент переименован в «{renamed_path.name}».", "success")
+        return redirect_to_admin_files(current_relative_path)
+    if action == "delete":
+        if not selected_relative_paths:
+            flash("Сначала отметьте элементы для удаления.", "error")
+            return redirect_to_admin_files(current_relative_path)
+        deleted_count = 0
+        for relative_path in selected_relative_paths:
+            _, target_path, _ = resolve_admin_path(relative_path)
+            if not target_path.exists():
+                continue
+            if target_path.is_dir():
+                shutil.rmtree(target_path)
+            else:
+                target_path.unlink()
+            deleted_count += 1
+        flash(f"Удалено элементов: {deleted_count}.", "success")
+        return redirect_to_admin_files(current_relative_path)
+    flash("Неизвестное действие.", "error")
+    return redirect_to_admin_files(current_relative_path)
 @app.route('/admin/files/download')
 @login_required
 def admin_file_download():
@@ -1149,5 +1281,7 @@ def logout():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        ensure_runtime_schema()
         ensure_default_shared_folders()
     app.run(host="0.0.0.0", port=5000)
+
