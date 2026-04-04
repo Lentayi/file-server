@@ -159,6 +159,59 @@
             display: none;
         }
 
+        .upload-progress {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 14px;
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+        }
+
+        .upload-progress[hidden] {
+            display: none;
+        }
+
+        .upload-progress-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .upload-progress-status {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .upload-progress-percent {
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .upload-progress-bar {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(47, 125, 246, 0.12);
+            overflow: hidden;
+        }
+
+        .upload-progress-fill {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #67d5ff, #2f7df6);
+            transition: width 140ms linear;
+        }
+
+        .upload-progress-meta {
+            color: var(--muted);
+            font-size: 0.84rem;
+            line-height: 1.4;
+        }
+
         .sidebar-button,
         .toolbar-button,
         .create-button {
@@ -195,6 +248,12 @@
         .sidebar-button.full {
             width: 100%;
             margin-top: 12px;
+        }
+
+        .sidebar-button:disabled {
+            opacity: 0.72;
+            cursor: wait;
+            transform: none;
         }
 
         .storage-chip {
@@ -532,13 +591,23 @@
                     <a class="dashboard-link" href="/dashboard">На главную</a>
                 </div>
 
-                <form class="upload-box" method="POST" action="{{ url_for('storage_upload') }}" enctype="multipart/form-data">
+                <form class="upload-box" method="POST" action="{{ url_for('storage_upload') }}" enctype="multipart/form-data" data-upload-form>
                     <h3>Загрузка с компьютера</h3>
                     <p class="sidebar-note">Добавьте файлы сразу в открытую папку.</p>
                     <input type="hidden" name="current_path" value="{{ current_relative_path }}">
                     <label class="upload-label" for="filesInput">Выбрать файлы</label>
-                    <input class="file-input" type="file" id="filesInput" name="files" multiple>
+                    <input class="file-input" type="file" id="filesInput" name="files" multiple data-upload-input>
                     <button class="sidebar-button primary full" type="submit">Загрузить</button>
+                    <div class="upload-progress" hidden>
+                        <div class="upload-progress-head">
+                            <span class="upload-progress-status">Готово к загрузке</span>
+                            <span class="upload-progress-percent">0%</span>
+                        </div>
+                        <div class="upload-progress-bar">
+                            <div class="upload-progress-fill"></div>
+                        </div>
+                        <div class="upload-progress-meta">Выберите файлы, чтобы увидеть общий размер.</div>
+                    </div>
                 </form>
 
                 <div class="sidebar-panel">
@@ -569,7 +638,7 @@
                             <h1>Личное хранилище</h1>
                             <div class="breadcrumbs">
                                 {% for crumb in breadcrumbs %}
-                                    {% if not loop.first %}<span>›</span>{% endif %}
+                                    {% if not loop.first %}<span>&rsaquo;</span>{% endif %}
                                     <a href="{{ crumb.url }}">{{ crumb.label }}</a>
                                 {% endfor %}
                             </div>
@@ -672,16 +741,129 @@
     </div>
 
     <script>
-        const fileInput = document.getElementById("filesInput");
-        const fileLabel = document.querySelector(".upload-label");
+        const uploadForm = document.querySelector("[data-upload-form]");
+        const fileInput = uploadForm?.querySelector("[data-upload-input]");
+        const fileLabel = uploadForm?.querySelector(".upload-label");
+        const uploadButton = uploadForm?.querySelector('button[type="submit"]');
+        const uploadProgress = uploadForm?.querySelector(".upload-progress");
+        const uploadStatus = uploadForm?.querySelector(".upload-progress-status");
+        const uploadPercent = uploadForm?.querySelector(".upload-progress-percent");
+        const uploadFill = uploadForm?.querySelector(".upload-progress-fill");
+        const uploadMeta = uploadForm?.querySelector(".upload-progress-meta");
         const selectAll = document.getElementById("selectAll");
         const checkboxes = Array.from(document.querySelectorAll(".entry-checkbox"));
         const selectionCounter = document.getElementById("selectionCounter");
+
+        function formatBytes(bytes) {
+            if (!bytes) {
+                return "0 Б";
+            }
+
+            const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+            let value = bytes;
+            let unitIndex = 0;
+
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex += 1;
+            }
+
+            const digits = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+            return `${value.toFixed(digits)} ${units[unitIndex]}`;
+        }
+
+        function formatSpeed(bytesPerSecond) {
+            return `${formatBytes(bytesPerSecond)}/с`;
+        }
+
+        function setUploadState(percent, statusText, metaText) {
+            if (!uploadProgress || !uploadStatus || !uploadPercent || !uploadFill || !uploadMeta) {
+                return;
+            }
+
+            uploadProgress.hidden = false;
+            uploadStatus.textContent = statusText;
+            uploadPercent.textContent = `${percent}%`;
+            uploadFill.style.width = `${percent}%`;
+            uploadMeta.textContent = metaText;
+        }
 
         if (fileInput && fileLabel) {
             fileInput.addEventListener("change", () => {
                 const count = fileInput.files.length;
                 fileLabel.textContent = count ? `Выбрано файлов: ${count}` : "Выбрать файлы";
+
+                if (!count) {
+                    if (uploadProgress) {
+                        uploadProgress.hidden = true;
+                    }
+                    return;
+                }
+
+                const totalSize = Array.from(fileInput.files).reduce((sum, file) => sum + file.size, 0);
+                setUploadState(0, "Файлы готовы", `${count} шт. • ${formatBytes(totalSize)}`);
+            });
+        }
+
+        if (uploadForm && fileInput) {
+            const defaultButtonText = uploadButton ? uploadButton.textContent : "";
+
+            uploadForm.addEventListener("submit", (event) => {
+                if (!fileInput.files.length) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                if (uploadButton) {
+                    uploadButton.disabled = true;
+                    uploadButton.textContent = "Загрузка...";
+                }
+                fileInput.disabled = true;
+
+                const xhr = new XMLHttpRequest();
+                const startedAt = performance.now();
+                const formData = new FormData(uploadForm);
+
+                xhr.open(uploadForm.method || "POST", uploadForm.action, true);
+
+                xhr.upload.addEventListener("progress", (progressEvent) => {
+                    const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.2);
+                    const loaded = progressEvent.loaded || 0;
+                    const total = progressEvent.total || 0;
+                    const percent = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+                    const speed = loaded / elapsedSeconds;
+                    const sizeText = total ? `${formatBytes(loaded)} из ${formatBytes(total)}` : formatBytes(loaded);
+                    setUploadState(percent, "Идет загрузка", `${sizeText} • ${formatSpeed(speed)}`);
+                });
+
+                xhr.addEventListener("load", () => {
+                    if (xhr.status >= 200 && xhr.status < 400) {
+                        setUploadState(100, "Загрузка завершена", "Файлы успешно отправлены.");
+                        window.setTimeout(() => {
+                            window.location.href = xhr.responseURL || window.location.href;
+                        }, 250);
+                        return;
+                    }
+
+                    setUploadState(100, "Ошибка загрузки", `Сервер вернул код ${xhr.status}.`);
+                    if (uploadButton) {
+                        uploadButton.disabled = false;
+                        uploadButton.textContent = defaultButtonText;
+                    }
+                    fileInput.disabled = false;
+                });
+
+                xhr.addEventListener("error", () => {
+                    setUploadState(0, "Ошибка загрузки", "Не удалось передать файлы на сервер.");
+                    if (uploadButton) {
+                        uploadButton.disabled = false;
+                        uploadButton.textContent = defaultButtonText;
+                    }
+                    fileInput.disabled = false;
+                });
+
+                xhr.send(formData);
             });
         }
 

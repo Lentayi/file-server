@@ -987,6 +987,24 @@ def rename_shared_folder_route(folder_id):
     return redirect_to_profile(f"shared-folder-{folder.id}")
 
 
+@app.route('/shared-folders/<int:folder_id>/delete', methods=['POST'])
+@login_required
+def delete_shared_folder_route(folder_id):
+    require_admin()
+    folder = SharedFolder.query.get_or_404(folder_id)
+    folder_name = folder.name
+    folder_root = get_shared_storage_root(folder)
+
+    if folder_root.exists():
+        shutil.rmtree(folder_root)
+
+    SharedFolderAccess.query.filter_by(shared_folder_id=folder.id).delete()
+    db.session.delete(folder)
+    db.session.commit()
+
+    flash(f"Общая папка «{folder_name}» удалена.", "success")
+    return redirect_to_profile("shared-folder-create")
+
 @app.route('/admin/users/create', methods=['POST'])
 @login_required
 def admin_create_user():
@@ -1239,6 +1257,37 @@ def admin_file_browser():
     )
 
 
+@app.route('/admin/files/upload', methods=['POST'])
+@login_required
+def admin_file_upload():
+    require_admin()
+    _, destination_directory, current_relative_path = resolve_admin_path(request.form.get("current_path", ""))
+    if not destination_directory.is_dir():
+        abort(404)
+
+    uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
+    if not uploaded_files:
+        flash("Сначала выберите файлы на компьютере.", "error")
+        return redirect_to_admin_files(current_relative_path)
+
+    saved_count = 0
+    for uploaded_file in uploaded_files:
+        safe_name = sanitize_entry_name(Path(uploaded_file.filename).name)
+        if not safe_name:
+            continue
+
+        destination_path = create_available_path(destination_directory, safe_name)
+        uploaded_file.save(destination_path)
+        saved_count += 1
+
+    if saved_count:
+        flash(f"Загружено файлов: {saved_count}.", "success")
+    else:
+        flash("Не удалось сохранить выбранные файлы.", "error")
+
+    return redirect_to_admin_files(current_relative_path)
+
+
 @app.route('/admin/files/action', methods=['POST'])
 @login_required
 def admin_file_action():
@@ -1285,6 +1334,8 @@ def admin_file_action():
         return redirect_to_admin_files(current_relative_path)
     flash("Неизвестное действие.", "error")
     return redirect_to_admin_files(current_relative_path)
+
+
 @app.route('/admin/files/download')
 @login_required
 def admin_file_download():
