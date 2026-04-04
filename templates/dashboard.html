@@ -1,17 +1,93 @@
-<h1>Your files</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
 
-<form action="/upload" method="POST" enctype="multipart/form-data">
-  <input type="file" name="file">
-  <button>Upload</button>
-</form>
+<body style="font-family: Arial;">
 
-<ul>
-  {% for file in files %}
-    <li>
-      {{ file.filename }}
-      <a href="/download/{{ file.id }}">Download</a>
-    </li>
-  {% endfor %}
-</ul>
+<h2>{{ greeting }}, {{ username }}!</h2>
 
-<a href="/logout">Logout</a>
+<div style="display:flex; gap:40px;">
+
+    <!-- ЛЕВАЯ ЧАСТЬ -->
+    <div>
+        <h3>Общие папки</h3>
+        <ul>
+            <li>Папка 1</li>
+            <li>Папка 2</li>
+        </ul>
+    </div>
+
+    <!-- ЦЕНТР -->
+    <div>
+        <h3>Заполненность диска</h3>
+
+        <div style="width:300px; border:1px solid black;">
+           <div style="height:30px; background:green;" id="diskBar"></div>
+
+<script>
+    document.getElementById("diskBar").style.width = "{{ percent }}%";
+</script>
+        </div>
+
+        <p>{{ percent }}%</p>
+    </div>
+
+    <!-- ПРАВАЯ ЧАСТЬ -->
+    <div style="text-align:center;">
+        <div style="width:120px; height:120px; border-radius:50%; border:2px solid black;"></div>
+
+        <h3 onclick="window.location='/profile'" style="cursor:pointer;">
+            {{ username }}
+        </h3>
+
+        <button onclick="window.location='/storage'">
+            Открыть личное хранилище
+        </button>
+    </div>
+
+</div>
+
+<hr>
+
+<!-- ЗАГРУЗКА -->
+<h3>Загрузка файла</h3>
+
+<input type="file" id="fileInput">
+<button onclick="uploadFile()">Upload</button>
+
+<div style="width:300px; border:1px solid black;">
+  <div id="progressBar" style="height:20px; width:0%; background:green;"></div>
+</div>
+
+<p id="status"></p>
+
+<script>
+function uploadFile() {
+    let file = document.getElementById("fileInput").files[0];
+    let formData = new FormData();
+    formData.append("file", file);
+
+    let xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            let percent = (e.loaded / e.total) * 100;
+            document.getElementById("progressBar").style.width = percent + "%";
+            document.getElementById("status").innerText = percent.toFixed(2) + "%";
+        }
+    };
+
+    xhr.onload = function() {
+        document.getElementById("status").innerText = "Готово!";
+        location.reload();
+    };
+
+    xhr.open("POST", "/upload", true);
+    xhr.send(formData);
+}
+</script>
+
+</body>
+</html>

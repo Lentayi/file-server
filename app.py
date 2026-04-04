@@ -2,6 +2,8 @@ import os
 from flask import Flask, request, redirect, render_template, send_file
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import shutil
 
 from models import db, User, File
 
@@ -35,8 +37,30 @@ def login():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    now = datetime.now().hour
+
+    if 6 <= now < 12:
+        greeting = "Доброе утро"
+    elif 12 <= now < 18:
+        greeting = "Добрый день"
+    elif 18 <= now < 24:
+        greeting = "Добрый вечер"
+    else:
+        greeting = "Доброй ночи"
+
+    # 📊 инфа о диске
+    total, used, free = shutil.disk_usage("/")
+    percent = int((used / total) * 100)
+
     files = File.query.filter_by(owner_id=current_user.id).all()
-    return render_template('dashboard.html', files=files)
+
+    return render_template(
+        'dashboard.html',
+        greeting=greeting,
+        percent=percent,
+        username=current_user.username,
+        files=files
+    )
 
 
 @app.route('/upload', methods=['POST'])
@@ -52,6 +76,10 @@ def upload():
 
     return redirect('/dashboard')
 
+@app.route('/profile')
+@login_required
+def profile():
+    return f"Профиль пользователя {current_user.username}"
 
 @app.route('/download/<int:file_id>')
 @login_required
@@ -64,6 +92,11 @@ def download(file_id):
 
     return send_file(file.path)
 
+@app.route('/storage')
+@login_required
+def storage():
+    files = File.query.filter_by(owner_id=current_user.id).all()
+    return render_template("storage.html", files=files)
 
 @app.route('/logout')
 def logout():
