@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +30,7 @@ from models import File, SharedFolder, SharedFolderAccess, User, UserPermission,
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = '/srv/file-server-data/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 180 * 1024 * 1024 * 1024  # 180GB
 
 db.init_app(app)
