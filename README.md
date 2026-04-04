@@ -5,7 +5,7 @@
 ## Установка
 
 ```bash
-git clone <URL_репозитория>
+git clone https://github.com/Lentayi/file-server.git
 cd file-server
 pip install -r requirements.txt
 
