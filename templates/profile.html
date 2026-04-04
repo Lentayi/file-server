@@ -324,6 +324,9 @@
             <div class="hero-actions">
                 <a class="link-button" href="/dashboard">На главную</a>
                 <a class="link-button" href="/storage">Личное хранилище</a>
+                {% if current_user.is_admin %}
+                    <a class="link-button" href="{{ url_for('admin_file_browser') }}">Все файлы</a>
+                {% endif %}
             </div>
         </div>
 
@@ -447,6 +450,17 @@
                 <article class="card">
                     <div class="card-inner">
                         <div class="eyebrow">Администрирование</div>
+                        <h2>Полный просмотр файлов</h2>
+                        <p>Открывает все папки и файлы сервера, включая личные хранилища пользователей.</p>
+                        <div class="form-grid">
+                            <a class="link-button" href="{{ url_for('admin_file_browser') }}">Открыть полный обзор файлов</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-inner">
+                        <div class="eyebrow">Администрирование</div>
                         <h2>Создание нового пользователя</h2>
                         <form class="form-grid" method="POST" action="{{ url_for('admin_create_user') }}">
                             <input type="text" name="username" placeholder="Логин" required>
@@ -460,6 +474,9 @@
                     </div>
                 </article>
 
+            </section>
+
+            <section class="wide-grid admin-section">
                 <article class="card">
                     <div class="card-inner">
                         <div class="eyebrow">Администрирование</div>

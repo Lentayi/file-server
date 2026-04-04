@@ -437,6 +437,54 @@ def build_personal_breadcrumbs(current_relative_path):
     return breadcrumbs
 
 
+def resolve_admin_path(relative_path=""):
+    root = get_upload_root().resolve()
+    safe_relative_path = sanitize_relative_path(relative_path)
+    target = (root / safe_relative_path).resolve()
+
+    if target != root and root not in target.parents:
+        abort(403)
+
+    return root, target, safe_relative_path
+
+
+def build_admin_items(current_relative_path):
+    root_directory, current_directory, _ = resolve_admin_path(current_relative_path)
+    items = []
+
+    for child in sorted(current_directory.iterdir(), key=lambda entry: (not entry.is_dir(), entry.name.lower())):
+        child_relative_path = child.relative_to(root_directory).as_posix()
+        stats = child.stat()
+        items.append(
+            {
+                "name": child.name,
+                "relative_path": child_relative_path,
+                "is_dir": child.is_dir(),
+                "modified_at": datetime.fromtimestamp(stats.st_mtime).strftime("%d.%m.%Y %H:%M"),
+                "size": "" if child.is_dir() else format_size(stats.st_size),
+                "type_label": describe_file_type(child),
+                "open_url": (
+                    url_for("admin_file_browser", path=child_relative_path)
+                    if child.is_dir()
+                    else url_for("admin_file_download", path=child_relative_path)
+                ),
+            }
+        )
+
+    return items
+
+
+def build_admin_breadcrumbs(current_relative_path):
+    breadcrumbs = [{"label": "Все файлы", "url": url_for("admin_file_browser")}]
+    current_parts = [part for part in sanitize_relative_path(current_relative_path).split("/") if part]
+
+    for index, part in enumerate(current_parts):
+        relative_path = "/".join(current_parts[: index + 1])
+        breadcrumbs.append({"label": part, "url": url_for("admin_file_browser", path=relative_path)})
+
+    return breadcrumbs
+
+
 def create_shared_folder(name, grant_user=None):
     safe_name = sanitize_entry_name(name)
     if not safe_name:
@@ -1056,6 +1104,37 @@ def storage_action():
 def storage_download():
     sync_legacy_personal_files(current_user)
     _, target_path, _ = resolve_personal_path(current_user, request.args.get("path", ""))
+    if not target_path.exists() or not target_path.is_file():
+        abort(404)
+    return send_file(target_path, as_attachment=True, download_name=target_path.name)
+
+
+@app.route('/admin/files')
+@login_required
+def admin_file_browser():
+    require_admin()
+    _, current_directory, current_relative_path = resolve_admin_path(request.args.get("path", ""))
+    if not current_directory.exists() or not current_directory.is_dir():
+        abort(404)
+
+    parent_relative_path = ""
+    if current_relative_path:
+        parent_relative_path = "/".join(current_relative_path.split("/")[:-1])
+
+    return render_template(
+        "admin_file_browser.html",
+        items=build_admin_items(current_relative_path),
+        breadcrumbs=build_admin_breadcrumbs(current_relative_path),
+        current_relative_path=current_relative_path,
+        parent_relative_path=parent_relative_path,
+    )
+
+
+@app.route('/admin/files/download')
+@login_required
+def admin_file_download():
+    require_admin()
+    _, target_path, _ = resolve_admin_path(request.args.get("path", ""))
     if not target_path.exists() or not target_path.is_file():
         abort(404)
     return send_file(target_path, as_attachment=True, download_name=target_path.name)
