@@ -841,11 +841,10 @@
                     uploadButton.disabled = true;
                     uploadButton.textContent = "Загрузка...";
                 }
-                fileInput.disabled = true;
-
                 const xhr = new XMLHttpRequest();
                 const startedAt = performance.now();
                 const formData = new FormData(uploadForm);
+                fileInput.disabled = true;
 
                 xhr.open(uploadForm.method || "POST", uploadForm.action, true);
 
