@@ -31,7 +31,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
+app.config['MAX_CONTENT_LENGTH'] = 180 * 1024 * 1024 * 1024  # 180GB
 
 db.init_app(app)
 
