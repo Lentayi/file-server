@@ -4,7 +4,7 @@
 
 ## Установка
 
-```bash
+``` bash
 git clone https://github.com/Lentayi/file-server.git
 cd file-server
 pip install -r requirements.txt
@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 ## Если admin не создан
 Запустите скрипт 
-``` Bash
+``` bash
 python create_admin.py
 ```
 
