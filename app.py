@@ -3,6 +3,8 @@ from flask import Flask, request, redirect, render_template, send_file
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
+
 from models import db, User, File
 
 app = Flask(__name__)
