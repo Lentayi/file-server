@@ -1,5 +1,6 @@
-﻿import os
+import os
 import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
@@ -85,6 +86,21 @@ def get_upload_root():
     upload_root.mkdir(parents=True, exist_ok=True)
     return upload_root
 
+
+def get_upload_temp_root():
+    temp_root = get_upload_root() / ".upload_tmp"
+    temp_root.mkdir(parents=True, exist_ok=True)
+    return temp_root
+
+
+def configure_upload_temp_root():
+    temp_root = str(get_upload_temp_root())
+    tempfile.tempdir = temp_root
+    os.environ["TMPDIR"] = temp_root
+    app.config["UPLOAD_TEMP_DIR"] = temp_root
+
+
+configure_upload_temp_root()
 
 def get_shared_root():
     shared_root = get_upload_root() / "shared"
