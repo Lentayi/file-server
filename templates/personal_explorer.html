@@ -591,7 +591,7 @@
                     <a class="dashboard-link" href="/dashboard">На главную</a>
                 </div>
 
-                <form class="upload-box" method="POST" action="{{ url_for('storage_upload') }}" enctype="multipart/form-data" data-upload-form>
+                <form class="upload-box" method="POST" action="{{ url_for('storage_upload') }}" enctype="multipart/form-data" data-upload-form data-chunk-url="{{ url_for('storage_upload_chunk') }}" data-chunk-size="{{ config['UPLOAD_CHUNK_SIZE'] }}">
                     <h3>Загрузка с компьютера</h3>
                     <p class="sidebar-note">Добавьте файлы сразу в открытую папку.</p>
                     <input type="hidden" name="current_path" value="{{ current_relative_path }}">
@@ -740,131 +740,12 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='chunked-upload.js') }}"></script>
     <script>
         const uploadForm = document.querySelector("[data-upload-form]");
-        const fileInput = uploadForm?.querySelector("[data-upload-input]");
-        const fileLabel = uploadForm?.querySelector(".upload-label");
-        const uploadButton = uploadForm?.querySelector('button[type="submit"]');
-        const uploadProgress = uploadForm?.querySelector(".upload-progress");
-        const uploadStatus = uploadForm?.querySelector(".upload-progress-status");
-        const uploadPercent = uploadForm?.querySelector(".upload-progress-percent");
-        const uploadFill = uploadForm?.querySelector(".upload-progress-fill");
-        const uploadMeta = uploadForm?.querySelector(".upload-progress-meta");
         const selectAll = document.getElementById("selectAll");
         const checkboxes = Array.from(document.querySelectorAll(".entry-checkbox"));
         const selectionCounter = document.getElementById("selectionCounter");
-
-        function formatBytes(bytes) {
-            if (!bytes) {
-                return "0 Б";
-            }
-
-            const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
-            let value = bytes;
-            let unitIndex = 0;
-
-            while (value >= 1024 && unitIndex < units.length - 1) {
-                value /= 1024;
-                unitIndex += 1;
-            }
-
-            const digits = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
-            return `${value.toFixed(digits)} ${units[unitIndex]}`;
-        }
-
-        function formatSpeed(bytesPerSecond) {
-            return `${formatBytes(bytesPerSecond)}/с`;
-        }
-
-        function setUploadState(percent, statusText, metaText) {
-            if (!uploadProgress || !uploadStatus || !uploadPercent || !uploadFill || !uploadMeta) {
-                return;
-            }
-
-            uploadProgress.hidden = false;
-            uploadStatus.textContent = statusText;
-            uploadPercent.textContent = `${percent}%`;
-            uploadFill.style.width = `${percent}%`;
-            uploadMeta.textContent = metaText;
-        }
-
-        if (fileInput && fileLabel) {
-            fileInput.addEventListener("change", () => {
-                const count = fileInput.files.length;
-                fileLabel.textContent = count ? `Выбрано файлов: ${count}` : "Выбрать файлы";
-
-                if (!count) {
-                    if (uploadProgress) {
-                        uploadProgress.hidden = true;
-                    }
-                    return;
-                }
-
-                const totalSize = Array.from(fileInput.files).reduce((sum, file) => sum + file.size, 0);
-                setUploadState(0, "Файлы готовы", `${count} шт. • ${formatBytes(totalSize)}`);
-            });
-        }
-
-        if (uploadForm && fileInput) {
-            const defaultButtonText = uploadButton ? uploadButton.textContent : "";
-
-            uploadForm.addEventListener("submit", (event) => {
-                if (!fileInput.files.length) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                if (uploadButton) {
-                    uploadButton.disabled = true;
-                    uploadButton.textContent = "Загрузка...";
-                }
-                const xhr = new XMLHttpRequest();
-                const startedAt = performance.now();
-                const formData = new FormData(uploadForm);
-                fileInput.disabled = true;
-
-                xhr.open(uploadForm.method || "POST", uploadForm.action, true);
-
-                xhr.upload.addEventListener("progress", (progressEvent) => {
-                    const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.2);
-                    const loaded = progressEvent.loaded || 0;
-                    const total = progressEvent.total || 0;
-                    const percent = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-                    const speed = loaded / elapsedSeconds;
-                    const sizeText = total ? `${formatBytes(loaded)} из ${formatBytes(total)}` : formatBytes(loaded);
-                    setUploadState(percent, "Идет загрузка", `${sizeText} • ${formatSpeed(speed)}`);
-                });
-
-                xhr.addEventListener("load", () => {
-                    if (xhr.status >= 200 && xhr.status < 400) {
-                        setUploadState(100, "Загрузка завершена", "Файлы успешно отправлены.");
-                        window.setTimeout(() => {
-                            window.location.href = xhr.responseURL || window.location.href;
-                        }, 250);
-                        return;
-                    }
-
-                    setUploadState(100, "Ошибка загрузки", `Сервер вернул код ${xhr.status}.`);
-                    if (uploadButton) {
-                        uploadButton.disabled = false;
-                        uploadButton.textContent = defaultButtonText;
-                    }
-                    fileInput.disabled = false;
-                });
-
-                xhr.addEventListener("error", () => {
-                    setUploadState(0, "Ошибка загрузки", "Не удалось передать файлы на сервер.");
-                    if (uploadButton) {
-                        uploadButton.disabled = false;
-                        uploadButton.textContent = defaultButtonText;
-                    }
-                    fileInput.disabled = false;
-                });
-
-                xhr.send(formData);
-            });
-        }
 
         function updateSelectionCounter() {
             const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
@@ -888,6 +769,8 @@
         checkboxes.forEach((checkbox) => {
             checkbox.addEventListener("change", updateSelectionCounter);
         });
+
+        window.setupChunkedUpload(uploadForm);
     </script>
 </body>
 </html>

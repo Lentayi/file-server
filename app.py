@@ -9,6 +9,7 @@ from flask import (
     Flask,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -33,6 +34,7 @@ app.config['SECRET_KEY'] = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['UPLOAD_FOLDER'] = '/srv/file-server-data/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 180 * 1024 * 1024 * 1024  # 180GB
+app.config['UPLOAD_CHUNK_SIZE'] = 8 * 1024 * 1024  # 8MB
 
 db.init_app(app)
 
@@ -101,6 +103,12 @@ def configure_upload_temp_root():
 
 
 configure_upload_temp_root()
+
+
+def get_chunk_upload_root():
+    chunk_root = get_upload_temp_root() / "chunks"
+    chunk_root.mkdir(parents=True, exist_ok=True)
+    return chunk_root
 
 def get_shared_root():
     shared_root = get_upload_root() / "shared"
@@ -328,6 +336,81 @@ def create_available_path(destination_dir, desired_name):
         if not candidate.exists():
             return candidate
         counter += 1
+
+
+def sanitize_upload_id(raw_upload_id):
+    value = (raw_upload_id or "").strip()
+    if not value:
+        abort(400)
+    if not all(char.isalnum() or char in {"-", "_"} for char in value):
+        abort(400)
+    return value
+
+
+def parse_int_field(field_name, minimum=0):
+    raw_value = request.form.get(field_name, "").strip()
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        abort(400)
+    if value < minimum:
+        abort(400)
+    return value
+
+
+def write_chunk_to_path(destination_directory):
+    if not destination_directory.is_dir():
+        abort(404)
+
+    upload_id = sanitize_upload_id(request.form.get("upload_id"))
+    safe_name = sanitize_entry_name(Path(request.form.get("filename", "")).name)
+    if not safe_name:
+        return jsonify({"ok": False, "error": "Некорректное имя файла."}), 400
+
+    chunk_index = parse_int_field("chunk_index")
+    total_chunks = parse_int_field("total_chunks", minimum=1)
+    chunk_start = parse_int_field("chunk_start")
+    total_size = parse_int_field("total_size")
+    uploaded_chunk = request.files.get("chunk")
+
+    if uploaded_chunk is None:
+        return jsonify({"ok": False, "error": "Файл не передан."}), 400
+    if chunk_index >= total_chunks:
+        abort(400)
+
+    chunk_root = get_chunk_upload_root()
+    temp_path = chunk_root / f"{upload_id}.part"
+
+    if chunk_start == 0 and temp_path.exists():
+        temp_path.unlink()
+
+    current_size = temp_path.stat().st_size if temp_path.exists() else 0
+    if current_size != chunk_start:
+        return jsonify({"ok": False, "error": "Нарушен порядок чанков.", "received": current_size}), 409
+
+    with temp_path.open("ab") as destination_stream:
+        shutil.copyfileobj(uploaded_chunk.stream, destination_stream, length=1024 * 1024)
+
+    stored_size = temp_path.stat().st_size
+    is_complete = chunk_index + 1 == total_chunks
+
+    if not is_complete:
+        return jsonify({"ok": True, "complete": False, "stored_size": stored_size})
+
+    if total_size and stored_size != total_size:
+        temp_path.unlink(missing_ok=True)
+        return jsonify({"ok": False, "error": "Размер собранного файла не совпадает."}), 400
+
+    final_path = create_available_path(destination_directory, safe_name)
+    temp_path.replace(final_path)
+    return jsonify(
+        {
+            "ok": True,
+            "complete": True,
+            "stored_size": stored_size,
+            "file_name": final_path.name,
+        }
+    )
 
 
 def format_size(size_bytes):
@@ -780,6 +863,14 @@ def shared_upload(folder_id):
     return redirect_to_shared(folder, current_relative_path)
 
 
+@app.route('/shared/<int:folder_id>/upload-chunk', methods=['POST'])
+@login_required
+def shared_upload_chunk(folder_id):
+    folder = get_folder_by_id(folder_id)
+    _, destination_directory, _ = resolve_shared_path(folder, request.form.get("current_path", ""))
+    return write_chunk_to_path(destination_directory)
+
+
 @app.route('/shared/<int:folder_id>/action', methods=['POST'])
 @login_required
 def shared_action(folder_id):
@@ -1156,6 +1247,14 @@ def storage_upload():
     return redirect_to_personal(current_relative_path)
 
 
+@app.route('/storage/upload-chunk', methods=['POST'])
+@login_required
+def storage_upload_chunk():
+    sync_legacy_personal_files(current_user)
+    _, destination_directory, _ = resolve_personal_path(current_user, request.form.get("current_path", ""))
+    return write_chunk_to_path(destination_directory)
+
+
 @app.route('/storage/action', methods=['POST'])
 @login_required
 def storage_action():
@@ -1302,6 +1401,14 @@ def admin_file_upload():
         flash("Не удалось сохранить выбранные файлы.", "error")
 
     return redirect_to_admin_files(current_relative_path)
+
+
+@app.route('/admin/files/upload-chunk', methods=['POST'])
+@login_required
+def admin_file_upload_chunk():
+    require_admin()
+    _, destination_directory, _ = resolve_admin_path(request.form.get("current_path", ""))
+    return write_chunk_to_path(destination_directory)
 
 
 @app.route('/admin/files/action', methods=['POST'])
