@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}File Server{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body data-theme="{{ active_theme|default('dark') }}">
+    <div class="app-shell">
+        {% block content %}{% endblock %}
+    </div>
+    {% block scripts %}
+        <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% endblock %}
+</body>
+</html>

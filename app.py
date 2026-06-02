@@ -32,8 +32,9 @@ from models import File, SharedFolder, SharedFolderAccess, User, UserPermission,
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
-app.config['UPLOAD_FOLDER'] = '/srv/file-server-data/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 180 * 1024 * 1024 * 1024  # 180GB
+app.config['UPLOAD_FOLDER'] = str(Path(__file__).resolve().parent / 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
+app.config['UPLOAD_STORAGE_LIMIT'] = 10 * 1024 * 1024 * 1024  # 10GB
 app.config['UPLOAD_CHUNK_SIZE'] = 8 * 1024 * 1024  # 8MB
 
 db.init_app(app)
@@ -109,6 +110,41 @@ def get_chunk_upload_root():
     chunk_root = get_upload_temp_root() / "chunks"
     chunk_root.mkdir(parents=True, exist_ok=True)
     return chunk_root
+
+
+def get_storage_usage():
+    total_size = 0
+    upload_root = get_upload_root()
+    for path in upload_root.rglob("*"):
+        if path.is_file():
+            total_size += path.stat().st_size
+    return total_size
+
+
+def has_storage_capacity(extra_bytes, replacing_bytes=0):
+    projected_size = get_storage_usage() - replacing_bytes + max(extra_bytes, 0)
+    return projected_size <= app.config['UPLOAD_STORAGE_LIMIT']
+
+
+def get_uploaded_file_size(uploaded_file):
+    if uploaded_file.content_length:
+        return uploaded_file.content_length
+
+    stream = uploaded_file.stream
+    current_position = stream.tell()
+    stream.seek(0, os.SEEK_END)
+    size = stream.tell()
+    stream.seek(current_position)
+    return size
+
+
+def get_uploaded_files_size(uploaded_files):
+    return sum(get_uploaded_file_size(uploaded_file) for uploaded_file in uploaded_files)
+
+
+def storage_limit_message():
+    return f"Недостаточно места в хранилище. Лимит: {format_size(app.config['UPLOAD_STORAGE_LIMIT'])}."
+
 
 def get_shared_root():
     shared_root = get_upload_root() / "shared"
@@ -251,6 +287,8 @@ def save_avatar(user, uploaded_file):
     extension = Path(uploaded_file.filename).suffix.lower()
     if extension not in ALLOWED_AVATAR_EXTENSIONS:
         return False
+    if not has_storage_capacity(get_uploaded_file_size(uploaded_file)):
+        return False
 
     current_avatar = get_avatar_path(user)
     if current_avatar and current_avatar.exists():
@@ -385,6 +423,9 @@ def write_chunk_to_path(destination_directory):
         temp_path.unlink()
 
     current_size = temp_path.stat().st_size if temp_path.exists() else 0
+    if not has_storage_capacity(total_size, replacing_bytes=current_size):
+        return jsonify({"ok": False, "error": storage_limit_message()}), 413
+
     if current_size != chunk_start:
         return jsonify({"ok": False, "error": "Нарушен порядок чанков.", "received": current_size}), 409
 
@@ -784,13 +825,14 @@ def dashboard():
 
     ensure_default_shared_folders()
     sync_legacy_personal_files(current_user)
-    upload_root = get_upload_root()
-    total, used, free = shutil.disk_usage(upload_root)
+    total = app.config['UPLOAD_STORAGE_LIMIT']
+    used = min(get_storage_usage(), total)
+    free = max(total - used, 0)
 
     return render_template(
         'dashboard.html',
         greeting=greeting,
-        percent=int((used / total) * 100),
+        percent=int((used / total) * 100) if total else 0,
         username=current_user.username,
         shared_folders=get_accessible_shared_folders(current_user),
         total_gb=round(total / (1024 ** 3), 1),
@@ -846,6 +888,9 @@ def shared_upload(folder_id):
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
         flash("Сначала выберите файлы на компьютере.", "error")
+        return redirect_to_shared(folder, current_relative_path)
+    if not has_storage_capacity(get_uploaded_files_size(uploaded_files)):
+        flash(storage_limit_message(), "error")
         return redirect_to_shared(folder, current_relative_path)
 
     saved_count = 0
@@ -977,6 +1022,9 @@ def upload():
     get_upload_root()
     safe_name = sanitize_entry_name(Path(uploaded_file.filename).name)
     if not safe_name:
+        return redirect('/dashboard')
+    if not has_storage_capacity(get_uploaded_file_size(uploaded_file)):
+        flash(storage_limit_message(), "error")
         return redirect('/dashboard')
 
     path = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
@@ -1228,6 +1276,9 @@ def storage_upload():
     if not uploaded_files:
         flash("Сначала выберите файлы на компьютере.", "error")
         return redirect_to_personal(current_relative_path)
+    if not has_storage_capacity(get_uploaded_files_size(uploaded_files)):
+        flash(storage_limit_message(), "error")
+        return redirect_to_personal(current_relative_path)
 
     saved_count = 0
     for uploaded_file in uploaded_files:
@@ -1383,6 +1434,9 @@ def admin_file_upload():
     uploaded_files = [file for file in request.files.getlist("files") if file and file.filename]
     if not uploaded_files:
         flash("Сначала выберите файлы на компьютере.", "error")
+        return redirect_to_admin_files(current_relative_path)
+    if not has_storage_capacity(get_uploaded_files_size(uploaded_files)):
+        flash(storage_limit_message(), "error")
         return redirect_to_admin_files(current_relative_path)
 
     saved_count = 0

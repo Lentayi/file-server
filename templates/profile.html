@@ -1,829 +1,228 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль</title>
-    <style>
-        :root {
-            --bg: #ecf2f8;
-            --panel: rgba(255, 255, 255, 0.92);
-            --panel-border: rgba(255, 255, 255, 0.9);
-            --line: #dce5f0;
-            --text: #162334;
-            --muted: #6c7a90;
-            --blue: #2f7df6;
-            --blue-soft: #e9f1ff;
-            --green: #23825d;
-            --danger: #d44f57;
-            --shadow: 0 24px 60px rgba(35, 53, 79, 0.14);
-            --radius-lg: 28px;
-            --radius-md: 20px;
-            --radius-sm: 14px;
-            --button-bg: #ffffff;
-            --field-bg: #ffffff;
-            --badge-bg: #f4f8ff;
-            --row-bg: rgba(255, 255, 255, 0.78);
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top left, rgba(47, 125, 246, 0.12), transparent 24%),
-                radial-gradient(circle at bottom right, rgba(116, 213, 255, 0.12), transparent 22%),
-                var(--bg);
-        }
-
-        body[data-theme="dark"] {
-            --bg: #081625;
-            --panel: rgba(11, 25, 40, 0.88);
-            --panel-border: rgba(174, 218, 255, 0.08);
-            --line: rgba(174, 218, 255, 0.12);
-            --text: #eef6ff;
-            --muted: #94a8bf;
-            --blue: #78c7ff;
-            --blue-soft: rgba(103, 213, 255, 0.12);
-            --green: #68d7a6;
-            --danger: #ff8d97;
-            --shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
-            --button-bg: rgba(255, 255, 255, 0.05);
-            --field-bg: rgba(255, 255, 255, 0.06);
-            --badge-bg: rgba(255, 255, 255, 0.06);
-            --row-bg: rgba(255, 255, 255, 0.05);
-            background:
-                radial-gradient(circle at top left, rgba(47, 125, 246, 0.2), transparent 24%),
-                radial-gradient(circle at bottom right, rgba(116, 213, 255, 0.14), transparent 22%),
-                linear-gradient(145deg, #05111c 0%, #0b2032 46%, #13283a 100%);
-        }
-
-        .page {
-            max-width: 1520px;
-            margin: 0 auto;
-            padding: 28px 24px 40px;
-        }
-
-        .hero {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
-            align-items: flex-start;
-            margin-bottom: 22px;
-        }
-
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(2.2rem, 4vw, 3.8rem);
-            letter-spacing: -0.05em;
-        }
-
-        .hero p {
-            margin: 10px 0 0;
-            color: var(--muted);
-        }
-
-        .hero-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .link-button,
-        .submit-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 44px;
-            padding: 0 16px;
-            border-radius: 14px;
-            border: 1px solid var(--line);
-            background: var(--button-bg);
-            color: var(--text);
-            text-decoration: none;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .submit-button.primary {
-            background: var(--blue);
-            border-color: var(--blue);
-            color: #fff;
-        }
-
-        .submit-button.danger {
-            border-color: rgba(212, 79, 87, 0.22);
-            color: var(--danger);
-        }
-
-        .flash-stack {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-
-        .flash {
-            padding: 13px 16px;
-            border-radius: 14px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.9);
-        }
-
-        .flash.success {
-            color: var(--green);
-            border-color: rgba(35, 130, 93, 0.16);
-            background: rgba(35, 130, 93, 0.08);
-        }
-
-        .flash.error {
-            color: var(--danger);
-            border-color: rgba(212, 79, 87, 0.16);
-            background: rgba(212, 79, 87, 0.08);
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(300px, 0.9fr) minmax(320px, 1fr) minmax(320px, 1.2fr);
-            gap: 18px;
-        }
-
-        .stack {
-            display: grid;
-            gap: 18px;
-        }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--panel-border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(14px);
-        }
-
-        .card-inner {
-            padding: 22px;
-        }
-
-        .eyebrow {
-            margin-bottom: 10px;
-            color: var(--blue);
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.18em;
-        }
-
-        .card h2,
-        .card h3 {
-            margin: 0 0 10px;
-            letter-spacing: -0.03em;
-        }
-
-        .card p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.55;
-        }
-
-        .profile-head {
-            display: grid;
-            justify-items: center;
-            text-align: center;
-        }
-
-        .avatar {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            overflow: hidden;
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: #04111b;
-            background: radial-gradient(circle at 30% 30%, #ffffff, #abf0ff 32%, #67d5ff 65%, #1b7ca8 100%);
-            border: 6px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
-        }
-
-        .avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .profile-name {
-            margin-top: 16px;
-            font-size: 1.9rem;
-            font-weight: 800;
-        }
-
-        .role-chip {
-            margin-top: 10px;
-            display: inline-flex;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: var(--blue-soft);
-            color: var(--blue);
-            font-weight: 700;
-        }
-
-        .badge-list,
-        .folder-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        .badge {
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: var(--badge-bg);
-            border: 1px solid var(--line);
-            color: var(--text);
-            font-size: 0.9rem;
-        }
-
-        .form-grid {
-            display: grid;
-            gap: 12px;
-            margin-top: 16px;
-        }
-
-        .upload-progress {
-            display: grid;
-            gap: 8px;
-            padding: 12px;
-            border-radius: 14px;
-            background: rgba(47, 125, 246, 0.06);
-            border: 1px solid rgba(47, 125, 246, 0.12);
-        }
-
-        .upload-progress[hidden] {
-            display: none;
-        }
-
-        .upload-progress-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            align-items: center;
-            font-size: 0.9rem;
-        }
-
-        .upload-progress-status {
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .upload-progress-percent {
-            color: var(--muted);
-            white-space: nowrap;
-        }
-
-        .upload-progress-bar {
-            height: 10px;
-            border-radius: 999px;
-            background: rgba(47, 125, 246, 0.12);
-            overflow: hidden;
-        }
-
-        .upload-progress-fill {
-            width: 0;
-            height: 100%;
-            border-radius: inherit;
-            background: linear-gradient(90deg, #67d5ff, #2f7df6);
-            transition: width 140ms linear;
-        }
-
-        .upload-progress-meta {
-            color: var(--muted);
-            font-size: 0.84rem;
-            line-height: 1.4;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        input[type="file"] {
-            width: 100%;
-            min-height: 46px;
-            padding: 0 14px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--line);
-            background: var(--field-bg);
-            color: var(--text);
-        }
-
-        input[type="file"] {
-            padding: 10px 14px;
-        }
-
-        .folder-grid,
-        .user-list {
-            display: grid;
-            gap: 14px;
-            margin-top: 16px;
-        }
-
-        .folder-row,
-        .user-card {
-            padding: 16px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--line);
-            background: var(--row-bg);
-            scroll-margin-top: 28px;
-            transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-        }
-
-        .theme-options {
-            display: grid;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        .theme-option {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-height: 48px;
-            padding: 12px 14px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--line);
-            background: var(--row-bg);
-        }
-
-        .theme-option input {
-            width: 16px;
-            height: 16px;
-        }
-
-        .card.focused,
-        .folder-row.focused,
-        .user-card.focused {
-            border-color: rgba(47, 125, 246, 0.45);
-            box-shadow: 0 16px 34px rgba(47, 125, 246, 0.16);
-            transform: translateY(-2px);
-        }
-
-        .folder-row form,
-        .user-card form {
-            display: grid;
-            gap: 12px;
-        }
-
-        .mini-title {
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .inline-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .checkbox-grid {
-            display: grid;
-            gap: 8px;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text);
-        }
-
-        .checkbox-item input {
-            width: 16px;
-            height: 16px;
-        }
-
-        .admin-section {
-            margin-top: 18px;
-        }
-
-        .wide-grid {
-            display: grid;
-            grid-template-columns: minmax(320px, 0.8fr) minmax(400px, 1.2fr);
-            gap: 18px;
-            margin-top: 18px;
-        }
-
-        @media (max-width: 1220px) {
-            .grid,
-            .wide-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 760px) {
-            .page {
-                padding: 20px 16px 30px;
-            }
-
-            .hero {
-                flex-direction: column;
-            }
-
-            .checkbox-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body data-theme="{{ active_theme }}">
-    <div class="page">
-        <div class="hero">
-            <div>
-                <h1>Личный кабинет</h1>
-                <p>Здесь можно управлять своим профилем, паролем, аватаром и правами доступа.</p>
-            </div>
-            <div class="hero-actions">
-                <a class="link-button" href="/dashboard">На главную</a>
-                <a class="link-button" href="/storage">Личное хранилище</a>
-                {% if current_user.is_admin %}
-                    <a class="link-button" href="{{ url_for('admin_file_browser') }}">Все файлы</a>
-                {% endif %}
-            </div>
-        </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-stack">
-                    {% for category, message in messages %}
-                        <div class="flash {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <section class="grid">
-            <article class="card" id="profile-summary">
-                <div class="card-inner profile-head">
-                    <div class="avatar">
-                        {% if avatar_url %}
-                            <img src="{{ avatar_url }}" alt="{{ username }}">
-                        {% else %}
-                            {{ avatar_text }}
-                        {% endif %}
-                    </div>
-                    <div class="profile-name">{{ username }}</div>
-                    <div class="role-chip">{{ role_label }}</div>
-                    <div class="badge-list">
-                        {% for badge in rights_badges %}
-                            <span class="badge">{{ badge }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-            </article>
-
-            <div class="stack">
-                <article class="card" id="avatar-settings">
-                    <div class="card-inner">
-                        <div class="eyebrow">Аватар</div>
-                        <h2>Изменение аватара</h2>
-                        <p>Поддерживаются PNG, JPG, JPEG, GIF и WEBP.</p>
-                        <form class="form-grid" method="POST" action="{{ url_for('update_avatar') }}" enctype="multipart/form-data" data-upload-form>
-                            <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp" required data-upload-input>
-                            <button class="submit-button primary" type="submit">Сохранить аватар</button>
-                            <div class="upload-progress" hidden>
-                                <div class="upload-progress-head">
-                                    <span class="upload-progress-status">Готово к загрузке</span>
-                                    <span class="upload-progress-percent">0%</span>
-                                </div>
-                                <div class="upload-progress-bar">
-                                    <div class="upload-progress-fill"></div>
-                                </div>
-                                <div class="upload-progress-meta">Выберите файл, чтобы увидеть размер.</div>
-                            </div>
-                        </form>
-                    </div>
-                </article>
-
-                <article class="card" id="password-settings">
-                    <div class="card-inner">
-                        <div class="eyebrow">Безопасность</div>
-                        <h2>Смена пароля</h2>
-                        <form class="form-grid" method="POST" action="{{ url_for('update_password') }}">
-                            <input type="password" name="current_password" placeholder="Текущий пароль" required>
-                            <input type="password" name="new_password" placeholder="Новый пароль" required>
-                            <input type="password" name="confirm_password" placeholder="Подтвердите новый пароль" required>
-                            <button class="submit-button primary" type="submit">Обновить пароль</button>
-                        </form>
-                    </div>
-                </article>
-
-                <article class="card" id="theme-settings">
-                    <div class="card-inner">
-                        <div class="eyebrow">Оформление</div>
-                        <h2>Тема интерфейса</h2>
-                        <p>Можно выбрать светлую, темную или автоматическую смену темы по времени суток.</p>
-                        <form class="form-grid" method="POST" action="{{ url_for('update_theme') }}">
-                            <div class="theme-options">
-                                <label class="theme-option">
-                                    <input type="radio" name="theme_preference" value="light" {% if theme_preference == 'light' %}checked{% endif %}>
-                                    <span>Светлая тема</span>
-                                </label>
-                                <label class="theme-option">
-                                    <input type="radio" name="theme_preference" value="dark" {% if theme_preference == 'dark' %}checked{% endif %}>
-                                    <span>Темная тема</span>
-                                </label>
-                                <label class="theme-option">
-                                    <input type="radio" name="theme_preference" value="auto" {% if theme_preference == 'auto' %}checked{% endif %}>
-                                    <span>Автоматически</span>
-                                </label>
-                            </div>
-                            <button class="submit-button primary" type="submit">Сохранить тему</button>
-                        </form>
-                    </div>
-                </article>
-            </div>
-
-            <article class="card" id="access-overview">
-                <div class="card-inner">
-                    <div class="eyebrow">Доступы</div>
-                    <h2>Ваши права и папки</h2>
-                    <p>Ниже показаны роль, расширенные права и список общих папок, которые вам доступны.</p>
-                    <div class="folder-badges">
-                        {% for badge in rights_badges %}
-                            <span class="badge">{{ badge }}</span>
-                        {% endfor %}
-                        {% if accessible_shared_folders %}
-                            {% for folder in accessible_shared_folders %}
-                                <span class="badge">{{ folder.name }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="badge">Нет доступа к общим папкам</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </article>
-        </section>
-
-        {% if can_create_shared_folders or can_edit_shared_folders or current_user.is_admin %}
-            <section class="wide-grid admin-section">
-                {% if can_create_shared_folders %}
-                    <article class="card" id="shared-folder-create">
-                        <div class="card-inner">
-                            <div class="eyebrow">Общие папки</div>
-                            <h2>Создание новой общей папки</h2>
-                            <form class="form-grid" method="POST" action="{{ url_for('create_shared_folder_route') }}">
-                                <input type="text" name="name" placeholder="Название общей папки" required>
-                                <button class="submit-button primary" type="submit">Создать общую папку</button>
-                            </form>
-                        </div>
-                    </article>
-                {% endif %}
-
-                {% if can_edit_shared_folders %}
-                    <article class="card">
-                        <div class="card-inner">
-                            <div class="eyebrow">Общие папки</div>
-                            <h2>Изменение существующих папок</h2>
-                            <div class="folder-grid">
-                                {% for folder in all_shared_folders %}
-                                    <div class="folder-row" id="shared-folder-{{ folder.id }}">
-                                        <div class="mini-title">{{ folder.name }}</div>
-                                        <form method="POST" action="{{ url_for('rename_shared_folder_route', folder_id=folder.id) }}">
-                                            <input type="text" name="name" value="{{ folder.name }}" required>
-                                            <div class="inline-actions">
-                                                <button class="submit-button" type="submit">Переименовать</button>
-                                            </div>
-                                        </form>
-                                        {% if current_user.is_admin %}
-                                            <form method="POST" action="{{ url_for('delete_shared_folder_route', folder_id=folder.id) }}">
-                                                <div class="inline-actions">
-                                                    <button class="submit-button danger" type="submit" onclick="return confirm('Удалить общую папку и все файлы внутри?');">Удалить папку</button>
-                                                </div>
-                                            </form>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </article>
-                {% endif %}
-            </section>
-        {% endif %}
-
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет | File Server{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">Profile</div>
+        <h1>Личный кабинет</h1>
+        <p class="lead">Профиль, безопасность, тема, общие папки и права пользователей.</p>
+    </div>
+    <div class="hero-actions">
+        <a class="ghost-button" href="{{ url_for('dashboard') }}">Дэшборд</a>
+        <a class="ghost-button" href="{{ url_for('storage') }}">Личное хранилище</a>
         {% if current_user.is_admin %}
-            <section class="wide-grid admin-section">
-                <article class="card" id="admin-files">
-                    <div class="card-inner">
-                        <div class="eyebrow">Администрирование</div>
-                        <h2>Полный просмотр файлов</h2>
-                        <p>Открывает все папки и файлы сервера, включая личные хранилища пользователей.</p>
-                        <div class="form-grid">
-                            <a class="link-button" href="{{ url_for('admin_file_browser') }}">Открыть полный обзор файлов</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="card" id="admin-create-user">
-                    <div class="card-inner">
-                        <div class="eyebrow">Администрирование</div>
-                        <h2>Создание нового пользователя</h2>
-                        <form class="form-grid" method="POST" action="{{ url_for('admin_create_user') }}">
-                            <input type="text" name="username" placeholder="Логин" required>
-                            <input type="password" name="password" placeholder="Пароль" required>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="is_admin">
-                                <span>Сразу выдать права администратора</span>
-                            </label>
-                            <button class="submit-button primary" type="submit">Создать пользователя</button>
-                        </form>
-                    </div>
-                </article>
-
-            </section>
-
-            <section class="wide-grid admin-section">
-                <article class="card">
-                    <div class="card-inner">
-                        <div class="eyebrow">Администрирование</div>
-                        <h2>Управление пользователями</h2>
-                        <div class="user-list">
-                            {% for user in all_users %}
-                                <div class="user-card" id="user-{{ user.id }}">
-                                    <div class="mini-title">{{ user.username }}</div>
-                                    <form method="POST" action="{{ url_for('admin_update_user', user_id=user.id) }}">
-                                        <div class="checkbox-grid">
-                                            <label class="checkbox-item">
-                                                <input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %}>
-                                                <span>Админские права</span>
-                                            </label>
-                                            <label class="checkbox-item">
-                                                <input type="checkbox" name="can_create_shared_folders" {% if permission_map[user.id].can_create_shared_folders %}checked{% endif %}>
-                                                <span>Создание общих папок</span>
-                                            </label>
-                                            <label class="checkbox-item">
-                                                <input type="checkbox" name="can_edit_shared_folders" {% if permission_map[user.id].can_edit_shared_folders %}checked{% endif %}>
-                                                <span>Изменение общих папок</span>
-                                            </label>
-                                        </div>
-
-                                        <div class="mini-title">Доступ к общим папкам</div>
-                                        <div class="checkbox-grid">
-                                            {% for folder in all_shared_folders %}
-                                                <label class="checkbox-item">
-                                                    <input type="checkbox" name="folder_access" value="{{ folder.id }}" {% if folder.id in folder_access_map[user.id] %}checked{% endif %}>
-                                                    <span>{{ folder.name }}</span>
-                                                </label>
-                                            {% endfor %}
-                                        </div>
-
-                                        <button class="submit-button primary" type="submit">Сохранить права</button>
-                                    </form>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </article>
-            </section>
+            <a class="ghost-button" href="{{ url_for('admin_file_browser') }}">Все файлы</a>
         {% endif %}
     </div>
+</section>
 
-    <script>
-        const url = new URL(window.location.href);
-        const returnTarget = url.searchParams.get("return_to");
-        const focusUserId = url.searchParams.get("focus_user");
-        const targetId = returnTarget || (focusUserId ? `user-${focusUserId}` : "");
-        const navigationEntry = performance.getEntriesByType("navigation")[0];
-        const uploadForms = Array.from(document.querySelectorAll("[data-upload-form]"));
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-stack">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
 
-        function formatBytes(bytes) {
-            if (!bytes) {
-                return "0 Б";
-            }
+<section class="grid-3">
+    <article class="panel">
+        <div style="display: grid; justify-items: center; text-align: center;">
+            <div class="avatar">
+                {% if avatar_url %}
+                    <img src="{{ avatar_url }}" alt="{{ username }}">
+                {% else %}
+                    {{ avatar_text }}
+                {% endif %}
+            </div>
+            <h2 style="margin-top: 18px;">{{ username }}</h2>
+            <span class="badge">{{ role_label }}</span>
+            <div class="badge-list" style="justify-content: center; margin-top: 16px;">
+                {% for badge in rights_badges %}
+                    <span class="badge">{{ badge }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </article>
 
-            const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
-            let value = bytes;
-            let unitIndex = 0;
+    <article class="panel" id="avatar-settings">
+        <div class="eyebrow">Аватар</div>
+        <h2>Изменение аватара</h2>
+        <p class="muted">PNG, JPG, JPEG, GIF или WEBP.</p>
+        <form class="form-grid" method="POST" action="{{ url_for('update_avatar') }}" enctype="multipart/form-data" data-avatar-upload>
+            <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.gif,.webp" required data-upload-input>
+            <button class="button" type="submit">Сохранить аватар</button>
+            <div class="upload-progress" hidden>
+                <div class="upload-progress-head">
+                    <span class="upload-progress-status">Файл готов</span>
+                    <span class="upload-progress-percent">0%</span>
+                </div>
+                <div class="upload-progress-bar"><div class="upload-progress-fill"></div></div>
+                <div class="upload-progress-meta">Выберите файл.</div>
+            </div>
+        </form>
+    </article>
 
-            while (value >= 1024 && unitIndex < units.length - 1) {
-                value /= 1024;
-                unitIndex += 1;
-            }
+    <article class="panel" id="password-settings">
+        <div class="eyebrow">Security</div>
+        <h2>Смена пароля</h2>
+        <form class="form-grid" method="POST" action="{{ url_for('update_password') }}">
+            <input type="password" name="current_password" placeholder="Текущий пароль" required>
+            <input type="password" name="new_password" placeholder="Новый пароль" required>
+            <input type="password" name="confirm_password" placeholder="Подтверждение" required>
+            <button class="button" type="submit">Обновить пароль</button>
+        </form>
+    </article>
+</section>
 
-            const digits = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
-            return `${value.toFixed(digits)} ${units[unitIndex]}`;
-        }
+<section class="grid-2" style="margin-top: 16px;">
+    <article class="panel" id="theme-settings">
+        <div class="eyebrow">Theme</div>
+        <h2>Тема интерфейса</h2>
+        <p class="muted">Светлая, темная или автоматическая по времени суток.</p>
+        <form class="form-grid" method="POST" action="{{ url_for('update_theme') }}">
+            <div class="theme-options">
+                <label class="theme-option">
+                    <input type="radio" name="theme_preference" value="light" {% if theme_preference == 'light' %}checked{% endif %}>
+                    <span>Светлая</span>
+                </label>
+                <label class="theme-option">
+                    <input type="radio" name="theme_preference" value="dark" {% if theme_preference == 'dark' %}checked{% endif %}>
+                    <span>Темная</span>
+                </label>
+                <label class="theme-option">
+                    <input type="radio" name="theme_preference" value="auto" {% if theme_preference == 'auto' %}checked{% endif %}>
+                    <span>Авто</span>
+                </label>
+            </div>
+            <button class="button" type="submit">Сохранить тему</button>
+        </form>
+    </article>
 
-        function formatSpeed(bytesPerSecond) {
-            return `${formatBytes(bytesPerSecond)}/с`;
-        }
+    <article class="panel" id="access-overview">
+        <div class="eyebrow">Access</div>
+        <h2>Ваши папки и права</h2>
+        <div class="badge-list">
+            {% for badge in rights_badges %}
+                <span class="badge">{{ badge }}</span>
+            {% endfor %}
+            {% if accessible_shared_folders %}
+                {% for folder in accessible_shared_folders %}
+                    <span class="badge">{{ folder.name }}</span>
+                {% endfor %}
+            {% else %}
+                <span class="badge">Нет общих папок</span>
+            {% endif %}
+        </div>
+    </article>
+</section>
 
-        function bindUploadProgress(uploadForm) {
-            const fileInput = uploadForm.querySelector("[data-upload-input]");
-            const uploadButton = uploadForm.querySelector('button[type="submit"]');
-            const uploadProgress = uploadForm.querySelector(".upload-progress");
-            const uploadStatus = uploadForm.querySelector(".upload-progress-status");
-            const uploadPercent = uploadForm.querySelector(".upload-progress-percent");
-            const uploadFill = uploadForm.querySelector(".upload-progress-fill");
-            const uploadMeta = uploadForm.querySelector(".upload-progress-meta");
+{% if can_create_shared_folders or can_edit_shared_folders or current_user.is_admin %}
+    <section class="grid-2" style="margin-top: 16px;">
+        {% if can_create_shared_folders %}
+            <article class="panel" id="shared-folder-create">
+                <div class="eyebrow">Shared folders</div>
+                <h2>Создать общую папку</h2>
+                <form class="form-grid" method="POST" action="{{ url_for('create_shared_folder_route') }}">
+                    <input type="text" name="name" placeholder="Название папки" required>
+                    <button class="button" type="submit">Создать</button>
+                </form>
+            </article>
+        {% endif %}
 
-            if (!fileInput || !uploadButton || !uploadProgress || !uploadStatus || !uploadPercent || !uploadFill || !uploadMeta) {
-                return;
-            }
+        {% if can_edit_shared_folders %}
+            <article class="panel">
+                <div class="eyebrow">Shared folders</div>
+                <h2>Изменить папки</h2>
+                <div class="folder-list">
+                    {% for folder in all_shared_folders %}
+                        <div class="folder-row" id="shared-folder-{{ folder.id }}" style="padding: 14px;">
+                            <strong>{{ folder.name }}</strong>
+                            <form class="create-form" method="POST" action="{{ url_for('rename_shared_folder_route', folder_id=folder.id) }}" style="margin-top: 10px;">
+                                <input type="text" name="name" value="{{ folder.name }}" required>
+                                <button class="ghost-button" type="submit">Переименовать</button>
+                            </form>
+                            {% if current_user.is_admin %}
+                                <form method="POST" action="{{ url_for('delete_shared_folder_route', folder_id=folder.id) }}" style="margin-top: 8px;">
+                                    <button class="ghost-button danger" type="submit" onclick="return confirm('Удалить общую папку и все файлы внутри?');">Удалить папку</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </article>
+        {% endif %}
+    </section>
+{% endif %}
 
-            const defaultButtonText = uploadButton.textContent;
+{% if current_user.is_admin %}
+    <section class="grid-2" style="margin-top: 16px;">
+        <article class="panel" id="admin-files">
+            <div class="eyebrow">Admin</div>
+            <h2>Полный просмотр файлов</h2>
+            <p class="muted">Все директории сервера, включая личные и общие хранилища.</p>
+            <a class="button" href="{{ url_for('admin_file_browser') }}">Открыть проводник</a>
+        </article>
 
-            function setUploadState(percent, statusText, metaText) {
-                uploadProgress.hidden = false;
-                uploadStatus.textContent = statusText;
-                uploadPercent.textContent = `${percent}%`;
-                uploadFill.style.width = `${percent}%`;
-                uploadMeta.textContent = metaText;
-            }
+        <article class="panel" id="admin-create-user">
+            <div class="eyebrow">Admin</div>
+            <h2>Создать пользователя</h2>
+            <form class="form-grid" method="POST" action="{{ url_for('admin_create_user') }}">
+                <input type="text" name="username" placeholder="Логин" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <label class="checkbox-item">
+                    <input type="checkbox" name="is_admin">
+                    <span>Выдать права администратора</span>
+                </label>
+                <button class="button" type="submit">Создать</button>
+            </form>
+        </article>
+    </section>
 
-            fileInput.addEventListener("change", () => {
-                const files = Array.from(fileInput.files || []);
-                if (!files.length) {
-                    uploadProgress.hidden = true;
-                    return;
-                }
+    <section class="panel" style="margin-top: 16px;">
+        <div class="eyebrow">Users</div>
+        <h2>Управление пользователями</h2>
+        <div class="user-list">
+            {% for user in all_users %}
+                <div class="user-card" id="user-{{ user.id }}" style="padding: 16px;">
+                    <div class="title-row">
+                        <strong>{{ user.username }}</strong>
+                        <span class="badge">{{ user.is_admin and 'Администратор' or 'Пользователь' }}</span>
+                    </div>
+                    <form method="POST" action="{{ url_for('admin_update_user', user_id=user.id) }}" style="margin-top: 14px;">
+                        <div class="checkbox-grid">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="is_admin" {% if user.is_admin %}checked{% endif %}>
+                                <span>Админские права</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="can_create_shared_folders" {% if permission_map[user.id].can_create_shared_folders %}checked{% endif %}>
+                                <span>Создание общих папок</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="can_edit_shared_folders" {% if permission_map[user.id].can_edit_shared_folders %}checked{% endif %}>
+                                <span>Изменение общих папок</span>
+                            </label>
+                        </div>
 
-                const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-                setUploadState(0, "Файлы готовы", `${files.length} шт. • ${formatBytes(totalSize)}`);
-            });
+                        <div class="eyebrow" style="margin-top: 12px;">Folder access</div>
+                        <div class="checkbox-grid">
+                            {% for folder in all_shared_folders %}
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="folder_access" value="{{ folder.id }}" {% if folder.id in folder_access_map[user.id] %}checked{% endif %}>
+                                    <span>{{ folder.name }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
 
-            uploadForm.addEventListener("submit", (event) => {
-                const files = Array.from(fileInput.files || []);
-                if (!files.length) {
-                    return;
-                }
-
-                event.preventDefault();
-                uploadButton.disabled = true;
-                uploadButton.textContent = "Загрузка...";
-                const xhr = new XMLHttpRequest();
-                const startedAt = performance.now();
-                const formData = new FormData(uploadForm);
-                fileInput.disabled = true;
-
-                xhr.open(uploadForm.method || "POST", uploadForm.action, true);
-
-                xhr.upload.addEventListener("progress", (progressEvent) => {
-                    const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.2);
-                    const loaded = progressEvent.loaded || 0;
-                    const total = progressEvent.total || 0;
-                    const percent = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-                    const speed = loaded / elapsedSeconds;
-                    const sizeText = total ? `${formatBytes(loaded)} из ${formatBytes(total)}` : formatBytes(loaded);
-                    setUploadState(percent, "Идет загрузка", `${sizeText} • ${formatSpeed(speed)}`);
-                });
-
-                xhr.addEventListener("load", () => {
-                    if (xhr.status >= 200 && xhr.status < 400) {
-                        setUploadState(100, "Загрузка завершена", "Файл успешно отправлен.");
-                        window.setTimeout(() => {
-                            window.location.href = xhr.responseURL || window.location.href;
-                        }, 250);
-                        return;
-                    }
-
-                    setUploadState(100, "Ошибка загрузки", `Сервер вернул код ${xhr.status}.`);
-                    uploadButton.disabled = false;
-                    uploadButton.textContent = defaultButtonText;
-                    fileInput.disabled = false;
-                });
-
-                xhr.addEventListener("error", () => {
-                    setUploadState(0, "Ошибка загрузки", "Не удалось передать файл на сервер.");
-                    uploadButton.disabled = false;
-                    uploadButton.textContent = defaultButtonText;
-                    fileInput.disabled = false;
-                });
-
-                xhr.send(formData);
-            });
-        }
-
-        if (!targetId && navigationEntry && navigationEntry.type === "reload") {
-            window.scrollTo(0, 0);
-        }
-
-        uploadForms.forEach(bindUploadProgress);
-
-        if (targetId) {
-            const targetCard = document.getElementById(targetId);
-            if (targetCard) {
-                requestAnimationFrame(() => {
-                    targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
-                    targetCard.classList.add("focused");
-                    setTimeout(() => targetCard.classList.remove("focused"), 2200);
-                });
-            }
-
-            url.searchParams.delete("return_to");
-            url.searchParams.delete("focus_user");
-            window.history.replaceState({}, "", url);
-        }
-    </script>
-</body>
-</html>
+                        <button class="button" type="submit">Сохранить права</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+{% endblock %}
