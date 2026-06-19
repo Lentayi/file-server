@@ -24,6 +24,44 @@
         setTheme(savedTheme);
     }
 
+    const logoutToggle = qs("[data-logout-toggle]");
+    const logoutMenu = qs("[data-logout-menu]");
+    const logoutCancel = qs("[data-logout-cancel]");
+
+    function closeLogoutMenu() {
+        if (!logoutToggle || !logoutMenu) {
+            return;
+        }
+
+        logoutMenu.hidden = true;
+        logoutToggle.setAttribute("aria-expanded", "false");
+    }
+
+    if (logoutToggle && logoutMenu) {
+        logoutToggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            const shouldOpen = logoutMenu.hidden;
+            logoutMenu.hidden = !shouldOpen;
+            logoutToggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+        });
+
+        if (logoutCancel) {
+            logoutCancel.addEventListener("click", closeLogoutMenu);
+        }
+
+        document.addEventListener("click", (event) => {
+            if (!logoutMenu.hidden && !event.target.closest(".logout-menu-wrap")) {
+                closeLogoutMenu();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                closeLogoutMenu();
+            }
+        });
+    }
+
     qsa("[data-select-form]").forEach((form) => {
         const selectAll = qs("[data-select-all]", form);
         const checkboxes = qsa(".entry-checkbox", form);
@@ -84,5 +122,76 @@
         if (target) {
             requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "center" }));
         }
+    }
+
+    const ramBufferStatus = qs("[data-ram-buffer-status]");
+
+    function formatBytes(bytes) {
+        const value = Number(bytes || 0);
+        const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+        let size = value;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex += 1;
+        }
+        const digits = size >= 10 || unitIndex === 0 ? 0 : 1;
+        return `${size.toFixed(digits)} ${units[unitIndex]}`;
+    }
+
+    function formatDuration(seconds) {
+        const total = Math.max(0, Math.round(Number(seconds || 0)));
+        if (!total) {
+            return "Очередь пуста";
+        }
+        const minutes = Math.floor(total / 60);
+        const rest = total % 60;
+        if (minutes <= 0) {
+            return `${rest} сек до диска`;
+        }
+        return `${minutes} мин ${rest} сек до диска`;
+    }
+
+    if (ramBufferStatus) {
+        const fill = qs("[data-ram-buffer-fill]", ramBufferStatus);
+        const used = qs("[data-ram-buffer-used]", ramBufferStatus);
+        const speed = qs("[data-ram-buffer-speed]", ramBufferStatus);
+        const eta = qs("[data-ram-buffer-eta]", ramBufferStatus);
+        const statusUrl = ramBufferStatus.dataset.statusUrl;
+
+        function renderRamBuffer(status) {
+            const percent = Math.max(0, Math.min(100, Number(status.percent || 0)));
+            if (fill) {
+                fill.style.width = `${percent}%`;
+            }
+            if (used) {
+                used.textContent = `${formatBytes(status.used_bytes)} занято`;
+            }
+            if (speed) {
+                speed.textContent = `${formatBytes(status.speed_bytes_per_sec)}/с на диск`;
+            }
+            if (eta) {
+                eta.textContent = status.flushing ? formatDuration(status.eta_seconds) : "Очередь пуста";
+            }
+            ramBufferStatus.hidden = status.enabled === false;
+        }
+
+        async function refreshRamBuffer() {
+            if (!statusUrl) {
+                return;
+            }
+            try {
+                const response = await fetch(statusUrl, { headers: { Accept: "application/json" } });
+                if (!response.ok) {
+                    return;
+                }
+                renderRamBuffer(await response.json());
+            } catch (error) {
+                // The next interval will retry the lightweight status request.
+            }
+        }
+
+        refreshRamBuffer();
+        window.setInterval(refreshRamBuffer, 1000);
     }
 })();

@@ -1,6 +1,9 @@
 import os
+import queue
 import shutil
 import tempfile
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
@@ -27,15 +30,12 @@ from flask_login import (
 from sqlalchemy import inspect
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from config import load_app_config
 from models import File, SharedFolder, SharedFolderAccess, User, UserPermission, db
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'supersecret'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
-app.config['UPLOAD_FOLDER'] = str(Path(__file__).resolve().parent / 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
-app.config['UPLOAD_STORAGE_LIMIT'] = 10 * 1024 * 1024 * 1024  # 10GB
-app.config['UPLOAD_CHUNK_SIZE'] = 8 * 1024 * 1024  # 8MB
+BASE_DIR = Path(__file__).resolve().parent
+app.config.update(load_app_config(BASE_DIR))
 
 db.init_app(app)
 
@@ -76,6 +76,187 @@ WINDOWS_RESERVED_NAMES = {
 ALLOWED_AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 ALLOWED_THEME_PREFERENCES = {"light", "dark", "auto"}
 RUNTIME_SCHEMA_READY = False
+
+
+class RamUploadBuffer:
+    def __init__(self, limit_bytes):
+        self.limit_bytes = max(int(limit_bytes or 0), 0)
+        self.lock = threading.Lock()
+        self.buffers = {}
+        self.pending = {}
+        self.active = None
+        self.reserved_paths = set()
+        self.write_queue = queue.Queue()
+        self.worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self.worker.start()
+
+    def reserved_bytes_locked(self):
+        buffer_reserved = sum(item["reserved"] for item in self.buffers.values())
+        pending_reserved = sum(item["total"] for item in self.pending.values())
+        active_reserved = self.active["total"] if self.active else 0
+        return buffer_reserved + pending_reserved + active_reserved
+
+    def visible_used_bytes_locked(self):
+        buffered = sum(len(item["data"]) for item in self.buffers.values())
+        pending = sum(item["total"] for item in self.pending.values())
+        active = self.active["total"] if self.active else 0
+        return buffered + pending + active
+
+    def try_start_chunk_buffer(self, upload_id, total_size):
+        if self.limit_bytes <= 0 or total_size <= 0 or total_size > self.limit_bytes:
+            return False
+
+        with self.lock:
+            existing = self.buffers.get(upload_id)
+            if existing:
+                return True
+            if self.reserved_bytes_locked() + total_size > self.limit_bytes:
+                return False
+            self.buffers[upload_id] = {
+                "data": bytearray(),
+                "reserved": total_size,
+                "total": total_size,
+                "started_at": time.time(),
+            }
+            return True
+
+    def has_chunk_buffer(self, upload_id):
+        with self.lock:
+            return upload_id in self.buffers
+
+    def chunk_buffer_size(self, upload_id):
+        with self.lock:
+            item = self.buffers.get(upload_id)
+            return len(item["data"]) if item else 0
+
+    def drop_chunk_buffer(self, upload_id):
+        with self.lock:
+            self.buffers.pop(upload_id, None)
+
+    def append_chunk(self, upload_id, chunk_start, chunk_stream):
+        with self.lock:
+            item = self.buffers.get(upload_id)
+            if not item or len(item["data"]) != chunk_start:
+                return False, len(item["data"]) if item else 0
+
+        data = chunk_stream.read()
+        with self.lock:
+            item = self.buffers.get(upload_id)
+            if not item or len(item["data"]) != chunk_start:
+                return False, len(item["data"]) if item else 0
+            item["data"].extend(data)
+            return True, len(item["data"])
+
+    def queue_chunk_file(self, upload_id, final_path):
+        with self.lock:
+            item = self.buffers.pop(upload_id, None)
+            if not item:
+                return False, 0
+            data = item["data"]
+            total = len(data)
+
+        self.queue_file(final_path, data)
+        return True, total
+
+    def queue_file(self, final_path, data):
+        job_id = uuid4().hex
+        path = Path(final_path).resolve()
+        total = len(data)
+        job = {
+            "id": job_id,
+            "path": path,
+            "name": path.name,
+            "data": data,
+            "total": total,
+            "queued_at": time.time(),
+        }
+        with self.lock:
+            self.reserved_paths.add(path)
+            self.pending[job_id] = {"name": job["name"], "total": total, "queued_at": job["queued_at"]}
+        self.write_queue.put(job)
+
+    def is_path_reserved(self, path):
+        with self.lock:
+            return Path(path).resolve() in self.reserved_paths
+
+    def reserve_bytes(self):
+        with self.lock:
+            return self.reserved_bytes_locked()
+
+    def pending_disk_bytes(self):
+        with self.lock:
+            pending = sum(item["total"] for item in self.pending.values())
+            active_remaining = max((self.active["total"] - self.active["written"]) if self.active else 0, 0)
+            return pending + active_remaining
+
+    def status(self):
+        with self.lock:
+            active = dict(self.active) if self.active else None
+            used = self.visible_used_bytes_locked()
+            pending_count = len(self.pending)
+
+        speed = active["speed"] if active else 0
+        remaining = active["total"] - active["written"] if active else 0
+        eta_seconds = int(remaining / speed) if speed > 0 and remaining > 0 else 0
+        percent = int((used / self.limit_bytes) * 100) if self.limit_bytes else 0
+
+        return {
+            "enabled": self.limit_bytes > 0,
+            "limit_bytes": self.limit_bytes,
+            "used_bytes": min(used, self.limit_bytes),
+            "percent": min(percent, 100),
+            "speed_bytes_per_sec": int(speed),
+            "eta_seconds": eta_seconds,
+            "pending_files": pending_count + (1 if active else 0),
+            "active_file": active["name"] if active else "",
+            "flushing": bool(active or pending_count),
+        }
+
+    def _worker_loop(self):
+        while True:
+            job = self.write_queue.get()
+            job_id = job["id"]
+            started_at = time.time()
+            written = 0
+            total = job["total"]
+            chunk_size = 1024 * 1024
+
+            with self.lock:
+                self.pending.pop(job_id, None)
+                self.active = {
+                    "id": job_id,
+                    "name": job["name"],
+                    "total": total,
+                    "written": 0,
+                    "speed": 0,
+                    "started_at": started_at,
+                }
+
+            try:
+                job["path"].parent.mkdir(parents=True, exist_ok=True)
+                with job["path"].open("wb") as destination_stream:
+                    view = memoryview(job["data"])
+                    for offset in range(0, total, chunk_size):
+                        destination_stream.write(view[offset : offset + chunk_size])
+                        written = min(offset + chunk_size, total)
+                        elapsed = max(time.time() - started_at, 0.001)
+                        with self.lock:
+                            if self.active and self.active["id"] == job_id:
+                                self.active["written"] = written
+                                self.active["speed"] = written / elapsed
+                    destination_stream.flush()
+                    os.fsync(destination_stream.fileno())
+            except Exception:
+                app.logger.exception("Failed to flush RAM upload buffer to %s", job["path"])
+            finally:
+                with self.lock:
+                    if self.active and self.active["id"] == job_id:
+                        self.active = None
+                    self.reserved_paths.discard(job["path"])
+                self.write_queue.task_done()
+
+
+RAM_UPLOAD_BUFFER = RamUploadBuffer(app.config.get("UPLOAD_RAM_BUFFER_LIMIT", 0))
 
 
 @login_manager.user_loader
@@ -122,7 +303,7 @@ def get_storage_usage():
 
 
 def has_storage_capacity(extra_bytes, replacing_bytes=0):
-    projected_size = get_storage_usage() - replacing_bytes + max(extra_bytes, 0)
+    projected_size = get_storage_usage() + RAM_UPLOAD_BUFFER.pending_disk_bytes() - replacing_bytes + max(extra_bytes, 0)
     return projected_size <= app.config['UPLOAD_STORAGE_LIMIT']
 
 
@@ -144,6 +325,21 @@ def get_uploaded_files_size(uploaded_files):
 
 def storage_limit_message():
     return f"Недостаточно места в хранилище. Лимит: {format_size(app.config['UPLOAD_STORAGE_LIMIT'])}."
+
+
+def save_uploaded_file(uploaded_file, destination_path):
+    file_size = get_uploaded_file_size(uploaded_file)
+    if (
+        file_size > 0
+        and file_size <= app.config["UPLOAD_RAM_BUFFER_LIMIT"]
+        and RAM_UPLOAD_BUFFER.reserve_bytes() + file_size <= app.config["UPLOAD_RAM_BUFFER_LIMIT"]
+    ):
+        uploaded_file.stream.seek(0)
+        RAM_UPLOAD_BUFFER.queue_file(destination_path, uploaded_file.stream.read())
+        return "ram"
+
+    uploaded_file.save(destination_path)
+    return "disk"
 
 
 def get_shared_root():
@@ -359,7 +555,7 @@ def resolve_shared_path(folder, relative_path=""):
 
 def create_available_path(destination_dir, desired_name):
     candidate = destination_dir / desired_name
-    if not candidate.exists():
+    if not candidate.exists() and not RAM_UPLOAD_BUFFER.is_path_reserved(candidate):
         return candidate
 
     stem = Path(desired_name).stem or desired_name
@@ -371,7 +567,7 @@ def create_available_path(destination_dir, desired_name):
             candidate = destination_dir / f"{stem} ({counter}){suffix}"
         else:
             candidate = destination_dir / f"{desired_name} ({counter})"
-        if not candidate.exists():
+        if not candidate.exists() and not RAM_UPLOAD_BUFFER.is_path_reserved(candidate):
             return candidate
         counter += 1
 
@@ -415,6 +611,47 @@ def write_chunk_to_path(destination_directory):
         return jsonify({"ok": False, "error": "Файл не передан."}), 400
     if chunk_index >= total_chunks:
         abort(400)
+
+    can_use_ram = (
+        total_size > 0
+        and total_size <= app.config["UPLOAD_RAM_BUFFER_LIMIT"]
+        and (
+            RAM_UPLOAD_BUFFER.has_chunk_buffer(upload_id)
+            or (chunk_start == 0 and RAM_UPLOAD_BUFFER.try_start_chunk_buffer(upload_id, total_size))
+        )
+    )
+
+    if can_use_ram:
+        if not has_storage_capacity(total_size):
+            RAM_UPLOAD_BUFFER.drop_chunk_buffer(upload_id)
+            return jsonify({"ok": False, "error": storage_limit_message()}), 413
+
+        ok, stored_size = RAM_UPLOAD_BUFFER.append_chunk(upload_id, chunk_start, uploaded_chunk.stream)
+        if not ok:
+            return jsonify({"ok": False, "error": "Нарушен порядок чанков.", "received": stored_size}), 409
+
+        is_complete = chunk_index + 1 == total_chunks
+        if not is_complete:
+            return jsonify({"ok": True, "complete": False, "stored_size": stored_size, "storage": "ram"})
+
+        if total_size and stored_size != total_size:
+            RAM_UPLOAD_BUFFER.drop_chunk_buffer(upload_id)
+            return jsonify({"ok": False, "error": "Размер собранного файла не совпадает."}), 400
+
+        final_path = create_available_path(destination_directory, safe_name)
+        queued, queued_size = RAM_UPLOAD_BUFFER.queue_chunk_file(upload_id, final_path)
+        if not queued:
+            return jsonify({"ok": False, "error": "Не удалось поставить файл в очередь записи."}), 500
+
+        return jsonify(
+            {
+                "ok": True,
+                "complete": True,
+                "stored_size": queued_size,
+                "file_name": final_path.name,
+                "storage": "ram",
+            }
+        )
 
     chunk_root = get_chunk_upload_root()
     temp_path = chunk_root / f"{upload_id}.part"
@@ -828,6 +1065,7 @@ def dashboard():
     total = app.config['UPLOAD_STORAGE_LIMIT']
     used = min(get_storage_usage(), total)
     free = max(total - used, 0)
+    ram_status = RAM_UPLOAD_BUFFER.status()
 
     return render_template(
         'dashboard.html',
@@ -844,7 +1082,15 @@ def dashboard():
         role_label=get_role_label(current_user),
         theme_preference=theme_preference,
         active_theme=resolve_active_theme(current_user, hour=hour),
+        ram_buffer=ram_status,
+        ram_total_label=format_size(ram_status["limit_bytes"]),
     )
+
+
+@app.route('/dashboard/ram-buffer-status')
+@login_required
+def dashboard_ram_buffer_status():
+    return jsonify(RAM_UPLOAD_BUFFER.status())
 
 
 @app.route('/shared/<int:folder_id>')
@@ -901,7 +1147,7 @@ def shared_upload(folder_id):
             continue
 
         destination_path = create_available_path(destination_directory, safe_name)
-        uploaded_file.save(destination_path)
+        save_uploaded_file(uploaded_file, destination_path)
         saved_count += 1
 
     flash(f"Загружено файлов: {saved_count}." if saved_count else "Не удалось сохранить выбранные файлы.", "success" if saved_count else "error")
@@ -1028,7 +1274,7 @@ def upload():
         return redirect('/dashboard')
 
     path = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
-    uploaded_file.save(path)
+    save_uploaded_file(uploaded_file, path)
 
     file = File(filename=safe_name, path=path, owner_id=current_user.id)
     db.session.add(file)
@@ -1287,7 +1533,7 @@ def storage_upload():
             continue
 
         destination_path = create_available_path(destination_directory, safe_name)
-        uploaded_file.save(destination_path)
+        save_uploaded_file(uploaded_file, destination_path)
         saved_count += 1
 
     if saved_count:
@@ -1446,7 +1692,7 @@ def admin_file_upload():
             continue
 
         destination_path = create_available_path(destination_directory, safe_name)
-        uploaded_file.save(destination_path)
+        save_uploaded_file(uploaded_file, destination_path)
         saved_count += 1
 
     if saved_count:
@@ -1534,4 +1780,4 @@ if __name__ == '__main__':
         db.create_all()
         ensure_runtime_schema()
         ensure_default_shared_folders()
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, load_dotenv=False)

@@ -1,80 +1,112 @@
 {% extends "base.html" %}
 
 {% block title %}Дэшборд | File Server{% endblock %}
+{% block shell_class %}dashboard-shell{% endblock %}
 
 {% block content %}
-<section class="hero">
-    <div>
-        <div class="eyebrow">Workspace</div>
-        <h1>{{ greeting }}, {{ username }}</h1>
-    </div>
-    <div class="hero-actions">
-        <form class="theme-toggle" method="POST" action="{{ url_for('dashboard_theme') }}">
-            <button class="{% if theme_preference == 'dark' %}active{% endif %}" type="submit" name="theme" value="dark">Темная</button>
-            <button class="{% if theme_preference == 'light' %}active{% endif %}" type="submit" name="theme" value="light">Светлая</button>
-        </form>
-        <span class="chip">{{ today_label }}</span>
-    </div>
-</section>
-
-{% if theme_preference == 'auto' %}
-    <div class="flash" style="margin-bottom: 16px;">Авто-тема активна из профиля: сейчас {{ active_theme == 'light' and 'светлая' or 'темная' }}.</div>
-{% endif %}
-
-<section class="grid-3">
-    <article class="panel" style="grid-column: span 1;">
-        <div class="eyebrow">Разделы</div>
-        <h2>Общие папки</h2>
-        <p class="muted">Доступные вам командные пространства.</p>
-        <div class="folder-list" style="margin-top: 18px;">
-            {% if shared_folders %}
-                {% for folder in shared_folders %}
-                    <a class="folder-tile" href="{{ url_for('shared_explorer', folder_id=folder.id) }}">
-                        <strong>{{ folder.name }}</strong>
-                        <span class="muted">Открыть</span>
-                    </a>
-                {% endfor %}
-            {% else %}
-                <div class="empty">Пока нет доступных общих папок.</div>
-            {% endif %}
+<div class="dashboard-screen">
+    <section class="hero dashboard-hero">
+        <div>
+            <div class="eyebrow">Workspace</div>
+            <h1>{{ greeting }}, {{ username }}</h1>
         </div>
-    </article>
-
-    <article class="panel">
-        <div class="eyebrow">Квота</div>
-        <h2>Хранилище приложения</h2>
-        <div class="progress-ring" style="--progress: {{ percent }};">
-            <div style="text-align: center;">
-                <strong>{{ percent }}%</strong>
-                <span class="muted">занято</span>
+        <div class="hero-actions">
+            <form class="theme-toggle" method="POST" action="{{ url_for('dashboard_theme') }}">
+                <button class="{% if theme_preference == 'dark' %}active{% endif %}" type="submit" name="theme" value="dark">Темная</button>
+                <button class="{% if theme_preference == 'light' %}active{% endif %}" type="submit" name="theme" value="light">Светлая</button>
+            </form>
+            <span class="chip">{{ today_label }}</span>
+            <div class="logout-menu-wrap">
+                <button class="ghost-button logout-button" type="button" data-logout-toggle aria-expanded="false">Выйти</button>
+                <div class="logout-confirm" hidden data-logout-menu>
+                    <strong>Выйти из аккаунта?</strong>
+                    <div class="logout-confirm-actions">
+                        <a class="button danger" href="{{ url_for('logout') }}">Подтвердить выход</a>
+                        <button class="ghost-button" type="button" data-logout-cancel>Отмена</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="stat-row">
-            <div class="stat"><span>Использовано</span><strong>{{ used_gb }} ГБ</strong></div>
-            <div class="stat"><span>Свободно</span><strong>{{ free_gb }} ГБ</strong></div>
-            <div class="stat"><span>Лимит</span><strong>{{ total_gb }} ГБ</strong></div>
-        </div>
-    </article>
+    </section>
 
-    <article class="panel">
-        <div style="display: grid; justify-items: center; text-align: center;">
-            <div class="avatar">
-                {% if avatar_url %}
-                    <img src="{{ avatar_url }}" alt="{{ username }}">
+    {% if theme_preference == 'auto' %}
+        <div class="flash" style="margin-bottom: 16px;">Авто-тема активна из профиля: сейчас {{ active_theme == 'light' and 'светлая' or 'темная' }}.</div>
+    {% endif %}
+
+    <section class="grid-3 dashboard-grid">
+        <article class="panel dashboard-panel" style="grid-column: span 1;">
+            <div class="eyebrow">Разделы</div>
+            <h2>Общие папки</h2>
+            <p class="muted">Доступные вам командные пространства.</p>
+            <div class="folder-list" style="margin-top: 18px;">
+                {% if shared_folders %}
+                    {% for folder in shared_folders %}
+                        <a class="folder-tile" href="{{ url_for('shared_explorer', folder_id=folder.id) }}">
+                            <strong>{{ folder.name }}</strong>
+                            <span class="muted">Открыть</span>
+                        </a>
+                    {% endfor %}
                 {% else %}
-                    {{ avatar_text }}
+                    <div class="empty">Пока нет доступных общих папок.</div>
                 {% endif %}
             </div>
-            <h2 style="margin-top: 18px;">{{ username }}</h2>
-            <span class="badge">{{ role_label }}</span>
+        </article>
+
+        <article class="panel dashboard-panel">
+            <div class="eyebrow">Квота</div>
+            <h2>Хранилище приложения</h2>
+            <div class="progress-ring" style="--progress: {{ percent }};">
+                <div style="text-align: center;">
+                    <strong>{{ percent }}%</strong>
+                    <span class="muted">занято</span>
+                </div>
+            </div>
+            <div class="stat-row">
+                <div class="stat"><span>Использовано</span><strong>{{ used_gb }} ГБ</strong></div>
+                <div class="stat"><span>Свободно</span><strong>{{ free_gb }} ГБ</strong></div>
+                <div class="stat"><span>Лимит</span><strong>{{ total_gb }} ГБ</strong></div>
+            </div>
+        </article>
+
+        <article class="panel dashboard-panel">
+            <div style="display: grid; justify-items: center; text-align: center;">
+                <div class="avatar">
+                    {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="{{ username }}">
+                    {% else %}
+                        {{ avatar_text }}
+                    {% endif %}
+                </div>
+                <h2 style="margin-top: 18px;">{{ username }}</h2>
+                <span class="badge">{{ role_label }}</span>
+            </div>
+            <div class="stack" style="margin-top: 24px;">
+                <a class="button" href="{{ url_for('storage') }}">Открыть личное хранилище</a>
+                <a class="ghost-button" href="{{ url_for('profile') }}">Личный кабинет</a>
+                {% if current_user.is_admin %}
+                    <a class="ghost-button" href="{{ url_for('admin_file_browser') }}">Все файлы сервера</a>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+
+    <aside
+        class="ram-buffer-bar"
+        data-ram-buffer-status
+        data-status-url="{{ url_for('dashboard_ram_buffer_status') }}"
+        data-enabled="{{ 'true' if ram_buffer.enabled else 'false' }}"
+    >
+        <div class="ram-buffer-main">
+            <span class="ram-buffer-label">RAM-буфер: {{ ram_total_label }}</span>
+            <span class="ram-buffer-value" data-ram-buffer-used>0 Б занято</span>
         </div>
-        <div class="stack" style="margin-top: 24px;">
-            <a class="button" href="{{ url_for('storage') }}">Открыть личное хранилище</a>
-            <a class="ghost-button" href="{{ url_for('profile') }}">Личный кабинет</a>
-            {% if current_user.is_admin %}
-                <a class="ghost-button" href="{{ url_for('admin_file_browser') }}">Все файлы сервера</a>
-            {% endif %}
+        <div class="ram-buffer-track" aria-hidden="true">
+            <div class="ram-buffer-fill" data-ram-buffer-fill style="width: {{ ram_buffer.percent }}%;"></div>
         </div>
-    </article>
-</section>
+        <div class="ram-buffer-meta">
+            <span data-ram-buffer-speed>0 Б/с на диск</span>
+            <span data-ram-buffer-eta>Очередь пуста</span>
+        </div>
+    </aside>
+</div>
 {% endblock %}
